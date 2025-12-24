@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { LuShieldCheck } from 'react-icons/lu';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,49 +15,50 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+      e.preventDefault();
+      setLoading(true);
+      setError('');
+  
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+  
+        const data = await res.json();
+  
+        if (!res.ok) {
+          throw new Error(data.error || 'Login failed');
+        }
+  
+        localStorage.setItem('token', data.token);
+        router.push('/dashboard');
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-
-      localStorage.setItem('token', data.token);
-      router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-50 via-white to-secondary-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 px-4">
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-linear-to-br from-primary-600 to-primary-700 mb-4 shadow-lg">
-            <span className="text-white font-bold text-2xl">W</span>
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 mb-4 shadow-lg">
+            <LuShieldCheck className="text-white w-10 h-10" />
           </div>
           <h1 className="text-3xl font-bold text-neutral-900 mb-2">Welcome Back</h1>
           <p className="text-neutral-600">Sign in to your Warranty Management System</p>
         </div>
 
-        <Card className="shadow-xl">
-          <CardContent className="pt-8">
+        <Card className="shadow-xl border-neutral-200">
+           {/* ... rest of the form ... */}
+           <CardContent className="pt-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="bg-danger-50 border border-danger-200 text-danger-700 p-4 rounded-lg text-sm font-medium">
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm font-medium">
                   {error}
                 </div>
               )}

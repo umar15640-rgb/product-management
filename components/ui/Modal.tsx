@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from './Button';
+import { LuX } from 'react-icons/lu';
 
 interface ModalProps {
   isOpen: boolean;
@@ -44,19 +44,19 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
           )}
         >
           {title && (
-            <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 bg-neutral-50">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 bg-neutral-50 rounded-t-xl">
               <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
               <button
                 onClick={onClose}
-                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                className="text-neutral-400 hover:text-neutral-600 transition-colors p-1 rounded-md hover:bg-neutral-200"
               >
-                ✕
+                <LuX className="w-5 h-5" />
               </button>
             </div>
           )}
           <div className="px-6 py-5">{children}</div>
           {footer && (
-            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b-xl flex justify-end gap-3">
               {footer}
             </div>
           )}

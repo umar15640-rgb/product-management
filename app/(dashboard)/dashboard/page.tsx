@@ -5,6 +5,17 @@ import Link from 'next/link';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { 
+  LuStore, 
+  LuPackage, 
+  LuShieldCheck, 
+  LuClipboardList, 
+  LuPackagePlus, 
+  LuUserPlus, 
+  LuFilePlus,
+  LuBook,
+  LuMessageCircle
+} from 'react-icons/lu';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -41,11 +52,12 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
+  // Updated to use Icon components instead of strings
   const quickActions = [
-    { icon: '📦', name: 'Add Product', href: '/products', color: 'primary' },
-    { icon: '🛡️', name: 'Register Warranty', href: '/warranties', color: 'secondary' },
-    { icon: '👤', name: 'Add Customer', href: '/customers', color: 'success' },
-    { icon: '📋', name: 'File Claim', href: '/claims', color: 'warning' },
+    { icon: LuPackagePlus, name: 'Add Product', href: '/products', color: 'primary' },
+    { icon: LuShieldCheck, name: 'Register Warranty', href: '/warranties', color: 'secondary' },
+    { icon: LuUserPlus, name: 'Add Customer', href: '/customers', color: 'success' },
+    { icon: LuFilePlus, name: 'File Claim', href: '/claims', color: 'warning' },
   ];
 
   return (
@@ -62,7 +74,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
-                <span className="text-xl">🏪</span>
+                <LuStore className="text-xl text-primary-600" />
                 Total Stores
               </CardTitle>
             </CardHeader>
@@ -75,7 +87,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
-                <span className="text-xl">📦</span>
+                <LuPackage className="text-xl text-primary-600" />
                 Total Products
               </CardTitle>
             </CardHeader>
@@ -88,7 +100,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
-                <span className="text-xl">🛡️</span>
+                <LuShieldCheck className="text-xl text-primary-600" />
                 Active Warranties
               </CardTitle>
             </CardHeader>
@@ -101,7 +113,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
-                <span className="text-xl">📋</span>
+                <LuClipboardList className="text-xl text-primary-600" />
                 Total Claims
               </CardTitle>
             </CardHeader>
@@ -121,8 +133,8 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {quickActions.map((action) => (
                 <Link key={action.name} href={action.href}>
-                  <div className="p-6 border-2 border-dashed border-neutral-200 rounded-xl hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 cursor-pointer group">
-                    <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{action.icon}</div>
+                  <div className="p-6 border-2 border-dashed border-neutral-200 rounded-xl hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 cursor-pointer group flex flex-col items-center text-center">
+                    <action.icon className="text-4xl mb-3 text-neutral-400 group-hover:text-primary-600 group-hover:scale-110 transition-transform duration-200" />
                     <div className="text-sm font-semibold text-neutral-900 group-hover:text-primary-700">{action.name}</div>
                     <div className="text-xs text-neutral-500 mt-1">Quick access →</div>
                   </div>
@@ -138,26 +150,26 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Getting Started</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-3">
-                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">1</div>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4 items-start">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm">1</div>
                 <div>
                   <p className="font-medium text-neutral-900">Set up your stores</p>
-                  <p className="text-sm text-neutral-600">Add your store locations and configurations</p>
+                  <p className="text-sm text-neutral-600 mt-1">Add your store locations and configurations</p>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">2</div>
+              <div className="flex gap-4 items-start">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm">2</div>
                 <div>
                   <p className="font-medium text-neutral-900">Register products</p>
-                  <p className="text-sm text-neutral-600">Add your product inventory to the system</p>
+                  <p className="text-sm text-neutral-600 mt-1">Add your product inventory to the system</p>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">3</div>
+              <div className="flex gap-4 items-start">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm">3</div>
                 <div>
                   <p className="font-medium text-neutral-900">Create warranties</p>
-                  <p className="text-sm text-neutral-600">Register customer warranties for your products</p>
+                  <p className="text-sm text-neutral-600 mt-1">Register customer warranties for your products</p>
                 </div>
               </div>
             </CardContent>
@@ -171,12 +183,14 @@ export default function DashboardPage() {
               <p className="text-sm text-neutral-600 mb-6">
                 Our comprehensive documentation and support team are here to help you get the most out of the Warranty Management System.
               </p>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  📖 View Documentation
+              <div className="space-y-3">
+                <Button variant="outline" className="w-full justify-start gap-2 h-10">
+                  <LuBook className="w-4 h-4" />
+                  View Documentation
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  💬 Contact Support
+                <Button variant="outline" className="w-full justify-start gap-2 h-10">
+                  <LuMessageCircle className="w-4 h-4" />
+                  Contact Support
                 </Button>
               </div>
             </CardContent>
