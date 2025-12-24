@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -71,55 +72,76 @@ export default function ProductsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
-          <Button onClick={() => setIsModalOpen(true)}>Add Product</Button>
+      <div className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-neutral-900 mb-2">Products</h1>
+            <p className="text-neutral-600">Manage your product inventory and warranty information</p>
+          </div>
+          <Button onClick={() => setIsModalOpen(true)} className="h-11">
+            <span className="mr-2">+</span> Add Product
+          </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Product List</CardTitle>
+            <CardTitle>Product Inventory</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Serial Number</TableHead>
-                  <TableHead>Brand</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Purchase Date</TableHead>
-                  <TableHead>Warranty (Months)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product._id}>
-                    <TableCell className="font-mono">{product.serial_number}</TableCell>
-                    <TableCell>{product.brand}</TableCell>
-                    <TableCell>{product.product_model}</TableCell>
-                    <TableCell>{product.category}</TableCell>
-                    <TableCell>{new Date(product.purchase_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{product.base_warranty_months}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {products.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📦</div>
+                <p className="text-neutral-600 font-medium">No products found</p>
+                <p className="text-neutral-500 text-sm">Add your first product to get started</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Serial Number</TableHead>
+                      <TableHead>Brand</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Purchase Date</TableHead>
+                      <TableHead>Warranty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product._id}>
+                        <TableCell className="font-mono text-primary-600 font-semibold">{product.serial_number}</TableCell>
+                        <TableCell className="font-medium">{product.brand}</TableCell>
+                        <TableCell>{product.product_model}</TableCell>
+                        <TableCell>
+                          <Badge variant="info">{product.category}</Badge>
+                        </TableCell>
+                        <TableCell>{new Date(product.purchase_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="primary">{product.base_warranty_months} months</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Product">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Product" size="md">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Store</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Store <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.store_id}
                 onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
                 required
               >
-                <option value="">Select Store</option>
+                <option value="">Select a store</option>
                 {stores.map((store) => (
                   <option key={store._id} value={store._id}>
                     {store.store_name}
@@ -130,6 +152,7 @@ export default function ProductsPage() {
 
             <Input
               label="Brand"
+              placeholder="Apple, Samsung, etc."
               value={formData.brand}
               onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
               required
@@ -137,6 +160,7 @@ export default function ProductsPage() {
 
             <Input
               label="Model"
+              placeholder="iPhone 15 Pro Max"
               value={formData.product_model}
               onChange={(e) => setFormData({ ...formData, product_model: e.target.value })}
               required
@@ -144,6 +168,7 @@ export default function ProductsPage() {
 
             <Input
               label="Category"
+              placeholder="Electronics, Appliances, etc."
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               required
@@ -160,13 +185,15 @@ export default function ProductsPage() {
             <Input
               label="Warranty Period (Months)"
               type="number"
+              placeholder="12"
+              min="1"
               value={formData.base_warranty_months}
               onChange={(e) => setFormData({ ...formData, base_warranty_months: parseInt(e.target.value) })}
               required
             />
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">Create Product</Button>

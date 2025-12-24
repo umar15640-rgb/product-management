@@ -67,6 +67,11 @@ export default function WarrantiesPage() {
 
     setIsModalOpen(false);
     fetchWarranties();
+    setFormData({
+      product_id: '',
+      customer_id: '',
+      warranty_start: '',
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -81,72 +86,91 @@ export default function WarrantiesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Warranties</h1>
-          <Button onClick={() => setIsModalOpen(true)}>Register Warranty</Button>
+      <div className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-neutral-900 mb-2">Warranties</h1>
+            <p className="text-neutral-600">Register and manage product warranties</p>
+          </div>
+          <Button onClick={() => setIsModalOpen(true)} className="h-11">
+            <span className="mr-2">+</span> Register Warranty
+          </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Warranty List</CardTitle>
+            <CardTitle>Warranty Registry</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {warranties.map((warranty) => (
-                  <TableRow key={warranty._id}>
-                    <TableCell>
-                      {warranty.product_id?.brand} {warranty.product_id?.product_model}
-                      <br />
-                      <span className="text-xs text-gray-500 font-mono">
-                        {warranty.product_id?.serial_number}
-                      </span>
-                    </TableCell>
-                    <TableCell>{warranty.customer_id?.customer_name}</TableCell>
-                    <TableCell>{new Date(warranty.warranty_start).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(warranty.warranty_end).toLocaleDateString()}</TableCell>
-                    <TableCell>{getStatusBadge(warranty.status)}</TableCell>
-                    <TableCell>
-                      {warranty.warranty_pdf_url && (
-                        <a
-                          href={warranty.warranty_pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          View PDF
-                        </a>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {warranties.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">🛡️</div>
+                <p className="text-neutral-600 font-medium">No warranties found</p>
+                <p className="text-neutral-500 text-sm">Register your first warranty to get started</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Start Date</TableHead>
+                      <TableHead>End Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {warranties.map((warranty) => (
+                      <TableRow key={warranty._id}>
+                        <TableCell>
+                          <div className="font-medium text-neutral-900">
+                            {warranty.product_id?.brand} {warranty.product_id?.product_model}
+                          </div>
+                          <div className="text-xs text-neutral-500 font-mono mt-1">
+                            {warranty.product_id?.serial_number}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{warranty.customer_id?.customer_name}</TableCell>
+                        <TableCell>{new Date(warranty.warranty_start).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(warranty.warranty_end).toLocaleDateString()}</TableCell>
+                        <TableCell>{getStatusBadge(warranty.status)}</TableCell>
+                        <TableCell>
+                          {warranty.warranty_pdf_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                window.open(warranty.warranty_pdf_url, '_blank');
+                              }}
+                            >
+                              📄 PDF
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Warranty">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register New Warranty" size="md">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Product <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.product_id}
                 onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
                 required
               >
-                <option value="">Select Product</option>
+                <option value="">Select a product</option>
                 {products.map((product) => (
                   <option key={product._id} value={product._id}>
                     {product.brand} {product.product_model} - {product.serial_number}
@@ -156,14 +180,16 @@ export default function WarrantiesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Customer <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.customer_id}
                 onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
                 required
               >
-                <option value="">Select Customer</option>
+                <option value="">Select a customer</option>
                 {customers.map((customer) => (
                   <option key={customer._id} value={customer._id}>
                     {customer.customer_name} - {customer.phone}
@@ -173,18 +199,20 @@ export default function WarrantiesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Start Date</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Warranty Start Date <span className="text-danger-600">*</span>
+              </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.warranty_start}
                 onChange={(e) => setFormData({ ...formData, warranty_start: e.target.value })}
                 required
               />
             </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">Register Warranty</Button>

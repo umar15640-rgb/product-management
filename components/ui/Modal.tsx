@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from './Button';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,9 +10,10 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  footer?: ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', footer }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -28,11 +30,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity backdrop-blur-sm" onClick={onClose} />
         
         <div
           className={cn(
-            'relative bg-white rounded-lg shadow-xl w-full',
+            'relative bg-white rounded-xl shadow-2xl w-full border border-neutral-200',
             {
               'max-w-md': size === 'sm',
               'max-w-lg': size === 'md',
@@ -42,11 +44,22 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           )}
         >
           {title && (
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 bg-neutral-50">
+              <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+              <button
+                onClick={onClose}
+                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                ✕
+              </button>
             </div>
           )}
-          <div className="px-6 py-4">{children}</div>
+          <div className="px-6 py-5">{children}</div>
+          {footer && (
+            <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </div>

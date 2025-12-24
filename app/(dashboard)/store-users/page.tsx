@@ -68,23 +68,34 @@ export default function StoreUsersPage() {
 
     setIsModalOpen(false);
     fetchStoreUsers();
+    setFormData({
+      store_id: '',
+      user_id: '',
+      role: 'staff',
+      permissions: [],
+    });
   };
 
   const getRoleBadge = (role: string) => {
     const variants: any = {
       admin: 'danger',
       manager: 'warning',
-      staff: 'info',
+      staff: 'success',
     };
     return <Badge variant={variants[role] || 'default'}>{role}</Badge>;
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Store Users</h1>
-          <Button onClick={() => setIsModalOpen(true)}>Add User</Button>
+      <div className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-neutral-900 mb-2">Store Users</h1>
+            <p className="text-neutral-600">Manage user roles and permissions across stores</p>
+          </div>
+          <Button onClick={() => setIsModalOpen(true)} className="h-11">
+            <span className="mr-2">+</span> Add User
+          </Button>
         </div>
 
         <Card>
@@ -92,54 +103,66 @@ export default function StoreUsersPage() {
             <CardTitle>User Assignments</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Store</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Assigned</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {storeUsers.map((storeUser) => (
-                  <TableRow key={storeUser._id}>
-                    <TableCell>{storeUser.user_id?.full_name}</TableCell>
-                    <TableCell>{storeUser.store_id?.store_name}</TableCell>
-                    <TableCell>{getRoleBadge(storeUser.role)}</TableCell>
-                    <TableCell>
-                      {storeUser.permissions.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {storeUser.permissions.map((perm: string, idx: number) => (
-                            <Badge key={idx} variant="default" className="text-xs">
-                              {perm}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>{new Date(storeUser.created_at).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {storeUsers.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">👥</div>
+                <p className="text-neutral-600 font-medium">No users assigned</p>
+                <p className="text-neutral-500 text-sm">Assign your first user to a store</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Store</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Permissions</TableHead>
+                      <TableHead>Assigned</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {storeUsers.map((storeUser) => (
+                      <TableRow key={storeUser._id}>
+                        <TableCell className="font-medium">{storeUser.user_id?.full_name}</TableCell>
+                        <TableCell>{storeUser.store_id?.store_name}</TableCell>
+                        <TableCell>{getRoleBadge(storeUser.role)}</TableCell>
+                        <TableCell>
+                          {storeUser.permissions.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {storeUser.permissions.map((perm: string, idx: number) => (
+                                <Badge key={idx} variant="default" className="text-xs">
+                                  {perm.replace(/_/g, ' ')}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-neutral-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-neutral-600">{new Date(storeUser.created_at).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Store User">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Assign User to Store" size="md">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Store</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Store <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.store_id}
                 onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
                 required
               >
-                <option value="">Select Store</option>
+                <option value="">Select a store</option>
                 {stores.map((store) => (
                   <option key={store._id} value={store._id}>
                     {store.store_name}
@@ -149,14 +172,16 @@ export default function StoreUsersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">User</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                User <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.user_id}
                 onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
                 required
               >
-                <option value="">Select User</option>
+                <option value="">Select a user</option>
                 {users.map((user) => (
                   <option key={user._id} value={user._id}>
                     {user.full_name} ({user.email})
@@ -166,9 +191,11 @@ export default function StoreUsersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Role <span className="text-danger-600">*</span>
+              </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 required
@@ -180,10 +207,10 @@ export default function StoreUsersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-              <div className="space-y-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-3">Permissions</label>
+              <div className="space-y-2 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
                 {['view_products', 'create_products', 'view_warranties', 'create_warranties', 'manage_claims'].map((perm) => (
-                  <label key={perm} className="flex items-center">
+                  <label key={perm} className="flex items-center cursor-pointer hover:bg-white p-2 rounded transition-colors">
                     <input
                       type="checkbox"
                       checked={formData.permissions.includes(perm)}
@@ -197,19 +224,19 @@ export default function StoreUsersPage() {
                           });
                         }
                       }}
-                      className="mr-2"
+                      className="h-4 w-4 rounded border-neutral-300 text-primary-600 cursor-pointer"
                     />
-                    <span className="text-sm">{perm.replace(/_/g, ' ')}</span>
+                    <span className="text-sm text-neutral-700 ml-2 capitalize">{perm.replace(/_/g, ' ')}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Add User</Button>
+              <Button type="submit">Assign User</Button>
             </div>
           </form>
         </Modal>

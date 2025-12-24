@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -39,74 +41,147 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
+  const quickActions = [
+    { icon: '📦', name: 'Add Product', href: '/products', color: 'primary' },
+    { icon: '🛡️', name: 'Register Warranty', href: '/warranties', color: 'secondary' },
+    { icon: '👤', name: 'Add Customer', href: '/customers', color: 'success' },
+    { icon: '📋', name: 'File Claim', href: '/claims', color: 'warning' },
+  ];
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-4xl font-bold text-neutral-900 mb-2">Welcome Back!</h1>
+          <p className="text-neutral-600">Here's what's happening with your warranty business today.</p>
+        </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Total Stores</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-xl">🏪</span>
+                Total Stores
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-900">{stats.stores}</p>
+              <p className="text-4xl font-bold text-neutral-900">{stats.stores}</p>
+              <p className="text-xs text-neutral-500 mt-2">Active stores in system</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Total Products</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-xl">📦</span>
+                Total Products
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-900">{stats.products}</p>
+              <p className="text-4xl font-bold text-neutral-900">{stats.products}</p>
+              <p className="text-xs text-neutral-500 mt-2">Products registered</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Active Warranties</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-xl">🛡️</span>
+                Active Warranties
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-900">{stats.warranties}</p>
+              <p className="text-4xl font-bold text-neutral-900">{stats.warranties}</p>
+              <p className="text-xs text-neutral-500 mt-2">Valid warranties</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Total Claims</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-xl">📋</span>
+                Total Claims
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-900">{stats.claims}</p>
+              <p className="text-4xl font-bold text-neutral-900">{stats.claims}</p>
+              <p className="text-xs text-neutral-500 mt-2">Claims processed</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <a href="/products" className="p-4 border rounded-lg hover:bg-gray-50 text-center">
-                <div className="text-2xl mb-2">📦</div>
-                <div className="text-sm font-medium">Add Product</div>
-              </a>
-              <a href="/warranties" className="p-4 border rounded-lg hover:bg-gray-50 text-center">
-                <div className="text-2xl mb-2">🛡️</div>
-                <div className="text-sm font-medium">Register Warranty</div>
-              </a>
-              <a href="/customers" className="p-4 border rounded-lg hover:bg-gray-50 text-center">
-                <div className="text-2xl mb-2">👤</div>
-                <div className="text-sm font-medium">Add Customer</div>
-              </a>
-              <a href="/claims" className="p-4 border rounded-lg hover:bg-gray-50 text-center">
-                <div className="text-2xl mb-2">📋</div>
-                <div className="text-sm font-medium">View Claims</div>
-              </a>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {quickActions.map((action) => (
+                <Link key={action.name} href={action.href}>
+                  <div className="p-6 border-2 border-dashed border-neutral-200 rounded-xl hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 cursor-pointer group">
+                    <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{action.icon}</div>
+                    <div className="text-sm font-semibold text-neutral-900 group-hover:text-primary-700">{action.name}</div>
+                    <div className="text-xs text-neutral-500 mt-1">Quick access →</div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </CardContent>
         </Card>
+
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Getting Started</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-3">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">1</div>
+                <div>
+                  <p className="font-medium text-neutral-900">Set up your stores</p>
+                  <p className="text-sm text-neutral-600">Add your store locations and configurations</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">2</div>
+                <div>
+                  <p className="font-medium text-neutral-900">Register products</p>
+                  <p className="text-sm text-neutral-600">Add your product inventory to the system</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="shrink-0 h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">3</div>
+                <div>
+                  <p className="font-medium text-neutral-900">Create warranties</p>
+                  <p className="text-sm text-neutral-600">Register customer warranties for your products</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Need Help?</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-neutral-600 mb-6">
+                Our comprehensive documentation and support team are here to help you get the most out of the Warranty Management System.
+              </p>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start">
+                  📖 View Documentation
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  💬 Contact Support
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

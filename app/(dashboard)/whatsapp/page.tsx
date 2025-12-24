@@ -26,86 +26,144 @@ export default function WhatsAppPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">WhatsApp Integration</h1>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold text-neutral-900 mb-2">WhatsApp Integration</h1>
+          <p className="text-neutral-600">Monitor and manage WhatsApp communications</p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Status</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-lg">🟢</span> Status
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="success">Active</Badge>
+              <Badge variant="success" className="text-base">Active</Badge>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Webhook URL</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-lg">🔗</span> Webhook URL
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <code className="text-xs">/api/whatsapp/kwic-hook</code>
+              <code className="text-xs bg-neutral-100 px-2 py-1 rounded block break-all">/api/whatsapp/kwic-hook</code>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Messages Today</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="text-lg">💬</span> Messages Today
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{logs.length}</p>
+              <p className="text-4xl font-bold text-neutral-900">{logs.length}</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Messages</CardTitle>
+            <CardTitle>Message Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Message</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.slice(0, 20).map((log) => (
-                  <TableRow key={log._id}>
-                    <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
-                    <TableCell>{log.phone_number}</TableCell>
-                    <TableCell>
-                      <Badge variant={log.message_type === 'incoming' ? 'info' : 'default'}>
-                        {log.message_type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">{log.event_type}</TableCell>
-                    <TableCell className="max-w-xs truncate">{log.message_content}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {logs.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">💬</div>
+                <p className="text-neutral-600 font-medium">No messages yet</p>
+                <p className="text-neutral-500 text-sm">Messages will appear here as they are received</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead>Phone Number</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Event</TableHead>
+                      <TableHead>Message</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.slice(0, 20).map((log) => (
+                      <TableRow key={log._id}>
+                        <TableCell className="text-neutral-600 text-sm">{new Date(log.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="font-medium font-mono">{log.phone_number}</TableCell>
+                        <TableCell>
+                          <Badge variant={log.message_type === 'incoming' ? 'info' : 'primary'}>
+                            {log.message_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-neutral-600 uppercase">{log.event_type}</TableCell>
+                        <TableCell className="max-w-xs truncate text-neutral-700">{log.message_content}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Commands</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <p><strong>menu</strong> - Show main menu</p>
-              <p><strong>1</strong> - Register warranty</p>
-              <p><strong>2</strong> - Check warranty</p>
-              <p><strong>3</strong> - Create claim</p>
-              <p><strong>4</strong> - Check claim status</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Available WhatsApp Commands</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="border-b border-neutral-200 pb-3 last:border-0">
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">menu</code>
+                  <p className="text-sm text-neutral-600 mt-1">Show main menu</p>
+                </div>
+                <div className="border-b border-neutral-200 pb-3 last:border-0">
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">1</code>
+                  <p className="text-sm text-neutral-600 mt-1">Register warranty</p>
+                </div>
+                <div className="border-b border-neutral-200 pb-3 last:border-0">
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">2</code>
+                  <p className="text-sm text-neutral-600 mt-1">Check warranty status</p>
+                </div>
+                <div className="border-b border-neutral-200 pb-3 last:border-0">
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">3</code>
+                  <p className="text-sm text-neutral-600 mt-1">Create claim</p>
+                </div>
+                <div className="border-b border-neutral-200 pb-3 last:border-0">
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">4</code>
+                  <p className="text-sm text-neutral-600 mt-1">Check claim status</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Integration Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-neutral-700 mb-1">API Endpoint</p>
+                  <code className="bg-neutral-100 px-3 py-2 rounded text-xs block break-all">/api/whatsapp/kwic-hook</code>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-700 mb-1">Method</p>
+                  <Badge variant="primary">POST</Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-700 mb-1">Status</p>
+                  <Badge variant="success">Connected & Active</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );
