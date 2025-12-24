@@ -41,6 +41,7 @@ async function postHandler(req: NextRequest) {
     const product = await Product.create({
       ...validated,
       ...serialData,
+      user_id: user.userId,
       purchase_date: new Date(validated.purchase_date),
     });
 

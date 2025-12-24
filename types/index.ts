@@ -41,6 +41,7 @@ export interface IStoreUser {
 export interface ICustomer {
   _id: Types.ObjectId;
   store_id: Types.ObjectId;
+  user_id: Types.ObjectId;
   customer_name: string;
   phone: string;
   email?: string;
@@ -53,6 +54,7 @@ export interface ICustomer {
 export interface IProduct {
   _id: Types.ObjectId;
   store_id: Types.ObjectId;
+  user_id: Types.ObjectId;
   product_model: string;
   category: string;
   brand: string;
@@ -69,6 +71,7 @@ export interface IProduct {
 export interface IWarranty {
   _id: Types.ObjectId;
   product_id: Types.ObjectId;
+  user_id: Types.ObjectId;
   customer_id: Types.ObjectId;
   store_id: Types.ObjectId;
   warranty_start: Date;

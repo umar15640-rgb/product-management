@@ -19,12 +19,17 @@ export function validateBody<T>(schema: ZodSchema<T>) {
   };
 }
 
-export const userAccountSchema = z.object({
-  full_name: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(10),
-  password: z.string().min(6),
-  business_name: z.string().optional(),
+export const signupSchema = z.object({
+  // User Fields
+  full_name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  
+  // Store Fields (Required for signup flow)
+  store_name: z.string().min(1, "Store name is required"),
+  
+  // Optional Fields
   business_whatsapp: z.string().optional(),
 });
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { LuArrowRight } from 'react-icons/lu';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,7 +15,6 @@ export default function SignupPage() {
     email: '',
     phone: '',
     password: '',
-    business_name: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,12 +33,25 @@ export default function SignupPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Signup failed');
-      }
+      if (!res.ok) throw new Error(data.error || 'Signup failed');
 
       localStorage.setItem('token', data.token);
-      router.push('/dashboard');
+      document.cookie = `token=${data.token}; path=/; max-age=604800`;
+      
+      if (data.isExistingUser) {
+        const storesRes = await fetch('/api/stores', {
+          headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+        const storesData = await storesRes.json();
+        
+        if (storesData.stores && storesData.stores.length > 0) {
+          router.push('/dashboard');
+        } else {
+          router.push('/setup-store');
+        }
+      } else {
+        router.push('/setup-store');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -47,22 +60,18 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-50 via-white to-secondary-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Logo Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-linear-to-br from-primary-600 to-primary-700 mb-4 shadow-lg">
-            <span className="text-white font-bold text-2xl">W</span>
-          </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">Get Started</h1>
-          <p className="text-neutral-600">Create your Warranty Management account</p>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-neutral-900">Create Account</h1>
+          <p className="mt-2 text-neutral-600">Start your journey with us</p>
         </div>
 
-        <Card className="shadow-xl">
+        <Card className="border-0 shadow-xl">
           <CardContent className="pt-8">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="bg-danger-50 border border-danger-200 text-danger-700 p-4 rounded-lg text-sm font-medium">
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
                   {error}
                 </div>
               )}
@@ -74,24 +83,21 @@ export default function SignupPage() {
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 required
               />
-              
               <Input
-                label="Email Address"
+                label="Email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="john@company.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
-              
               <Input
-                label="Phone Number"
-                placeholder="+1 (555) 123-4567"
+                label="Phone"
+                placeholder="+1 234 567 8900"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
               />
-              
               <Input
                 label="Password"
                 type="password"
@@ -100,30 +106,18 @@ export default function SignupPage() {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
               />
-              
-              <Input
-                label="Business Name"
-                placeholder="Your Business (optional)"
-                value={formData.business_name}
-                onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-              />
-              
-              <Button type="submit" className="w-full h-11 text-base" loading={loading}>
-                {loading ? 'Creating account...' : 'Create Account'}
+
+              <Button type="submit" className="w-full h-11" loading={loading}>
+                <span>Get Started</span>
+                <LuArrowRight className="ml-2 w-4 h-4" />
               </Button>
-              
-              <p className="text-center text-sm text-neutral-600">
-                Already have an account?{' '}
-                <Link href="/login" className="text-primary-600 hover:text-primary-700 font-semibold">
-                  Sign in
-                </Link>
-              </p>
             </form>
           </CardContent>
         </Card>
-
-        <p className="text-center text-xs text-neutral-500 mt-6">
-          © 2024 Warranty Management System. All rights reserved.
+        
+        <p className="text-center text-sm text-neutral-600">
+          Already have an account?{' '}
+          <Link href="/login" className="text-primary-600 font-semibold hover:underline">Log in</Link>
         </p>
       </div>
     </div>

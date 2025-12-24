@@ -33,7 +33,22 @@ export default function LoginPage() {
         }
   
         localStorage.setItem('token', data.token);
-        router.push('/dashboard');
+        document.cookie = `token=${data.token}; path=/; max-age=604800`;
+        
+        const storesRes = await fetch('/api/stores', {
+          headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+        const storesData = await storesRes.json();
+        
+        if (!storesRes.ok) {
+          throw new Error(storesData.error || 'Failed to fetch stores');
+        }
+        
+        if (!storesData.stores || storesData.stores.length === 0) {
+          router.push('/setup-store');
+        } else {
+          router.push('/dashboard');
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -54,7 +69,6 @@ export default function LoginPage() {
         </div>
 
         <Card className="shadow-xl border-neutral-200">
-           {/* ... rest of the form ... */}
            <CardContent className="pt-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (

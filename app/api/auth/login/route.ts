@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const user = await UserAccount.findOne({ email });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'User does not exist' }, { status: 401 });
     }
 
     const isValid = await comparePassword(password, user.password_hash);

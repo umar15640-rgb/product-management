@@ -6,6 +6,7 @@ const WarrantySchema = new Schema<IWarranty>(
     product_id: { type: Schema.Types.ObjectId, ref: 'products', required: true },
     customer_id: { type: Schema.Types.ObjectId, ref: 'customers', required: true },
     store_id: { type: Schema.Types.ObjectId, ref: 'stores', required: true },
+    user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts', required: true }, // Added
     warranty_start: { type: Date, required: true },
     warranty_end: { type: Date, required: true },
     status: { type: String, enum: ['active', 'expired', 'claimed', 'void'], default: 'active' },
@@ -19,8 +20,8 @@ const WarrantySchema = new Schema<IWarranty>(
 );
 
 WarrantySchema.index({ product_id: 1 }, { unique: true });
+WarrantySchema.index({ store_id: 1, user_id: 1 }); // Efficient isolation query
 WarrantySchema.index({ customer_id: 1 });
-WarrantySchema.index({ store_id: 1 });
 WarrantySchema.index({ status: 1 });
 
 export const Warranty: Model<IWarranty> =

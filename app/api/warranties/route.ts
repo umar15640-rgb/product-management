@@ -86,6 +86,7 @@ async function postHandler(req: NextRequest) {
       product_id: validated.product_id,
       customer_id: validated.customer_id,
       store_id: product.store_id,
+      user_id: user.userId,
       warranty_start,
       warranty_end,
       qr_code_url,

@@ -3,13 +3,12 @@ import { connectDB } from '@/lib/db';
 import { UserAccount } from '@/models/UserAccount';
 import { withAuth } from '@/middleware/auth';
 
-async function handler(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   try {
     await connectDB();
-
     const user = (req as any).user;
-    const userAccount = await UserAccount.findById(user.userId).select('-password_hash');
 
+    const userAccount = await UserAccount.findById(user.userId).select('-password_hash');
     if (!userAccount) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -20,4 +19,4 @@ async function handler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(handler);
+export const GET = withAuth(getHandler);
