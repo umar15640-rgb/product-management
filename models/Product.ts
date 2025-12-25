@@ -4,15 +4,15 @@ import { IProduct } from '@/types';
 const ProductSchema = new Schema<IProduct>(
   {
     store_id: { type: Schema.Types.ObjectId, ref: 'stores', required: true },
-    user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts', required: true }, // Added
+    user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts', required: true },
     product_model: { type: String, required: true },
     category: { type: String, required: true },
     brand: { type: String, required: true },
     serial_number: { type: String, required: true, unique: true },
     serial_prefix_used: { type: String, required: true },
-    serial_suffix_used: { type: String},
-    serial_number_index: { type: Number, required: true },
-    purchase_date: { type: Date, required: true },
+    serial_suffix_used: { type: String },
+    // serial_number_index removed as we are using random generation now
+    manufacturing_date: { type: Date, required: true }, // Changed from purchase_date
     base_warranty_months: { type: Number, required: true, default: 12 },
   },
   {
@@ -22,7 +22,7 @@ const ProductSchema = new Schema<IProduct>(
 );
 
 ProductSchema.index({ serial_number: 1 }, { unique: true });
-ProductSchema.index({ store_id: 1, user_id: 1 }); // Added
+ProductSchema.index({ store_id: 1, user_id: 1 });
 ProductSchema.index({ brand: 1, category: 1 });
 
 export const Product: Model<IProduct> =

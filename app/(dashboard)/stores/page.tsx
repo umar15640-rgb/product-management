@@ -8,15 +8,17 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { LuPencil } from 'react-icons/lu';
 
 export default function StoresPage() {
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState<any>(null);
   const [formData, setFormData] = useState({
     store_name: '',
     address: '',
     contact_phone: '',
-    serial_prefix: 'PRD',
+    serial_prefix: '',
     serial_suffix: '',
     whatsapp_enabled: false,
     whatsapp_number: '',
@@ -35,12 +37,43 @@ export default function StoresPage() {
     setStores(data.stores || []);
   };
 
+  const handleEdit = (store: any) => {
+    setEditingStore(store);
+    setFormData({
+      store_name: store.store_name,
+      address: store.address || '',
+      contact_phone: store.contact_phone || '',
+      serial_prefix: store.serial_prefix,
+      serial_suffix: store.serial_suffix || '',
+      whatsapp_enabled: store.whatsapp_enabled || false,
+      whatsapp_number: store.whatsapp_number || '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleAdd = () => {
+    setEditingStore(null);
+    setFormData({
+      store_name: '',
+      address: '',
+      contact_phone: '',
+      serial_prefix: '',
+      serial_suffix: '',
+      whatsapp_enabled: false,
+      whatsapp_number: '',
+    });
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
     
-    await fetch('/api/stores', {
-      method: 'POST',
+    const url = editingStore ? `/api/stores/${editingStore._id}` : '/api/stores';
+    const method = editingStore ? 'PUT' : 'POST';
+
+    await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -50,15 +83,7 @@ export default function StoresPage() {
 
     setIsModalOpen(false);
     fetchStores();
-    setFormData({
-      store_name: '',
-      address: '',
-      contact_phone: '',
-      serial_prefix: 'PRD',
-      serial_suffix: '',
-      whatsapp_enabled: false,
-      whatsapp_number: '',
-    });
+    setEditingStore(null);
   };
 
   return (
@@ -69,7 +94,7 @@ export default function StoresPage() {
             <h1 className="text-4xl font-bold text-neutral-900 mb-2">Stores</h1>
             <p className="text-neutral-600">Manage your store locations and configurations</p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="h-11">
+          <Button onClick={handleAdd} className="h-11">
             <span className="mr-2">+</span> Add Store
           </Button>
         </div>
@@ -95,6 +120,7 @@ export default function StoresPage() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Serial Format</TableHead>
                       <TableHead>WhatsApp</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -115,6 +141,11 @@ export default function StoresPage() {
                             <Badge variant="default">Disabled</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(store)}>
+                                <LuPencil className="w-4 h-4 text-neutral-500" />
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -124,7 +155,7 @@ export default function StoresPage() {
           </CardContent>
         </Card>
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Store" size="md">
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingStore ? "Edit Store" : "Add New Store"} size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="Store Name"
@@ -191,7 +222,7 @@ export default function StoresPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Add Store</Button>
+              <Button type="submit">{editingStore ? "Update Store" : "Add Store"}</Button>
             </div>
           </form>
         </Modal>

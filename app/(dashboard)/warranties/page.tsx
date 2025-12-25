@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useStore } from '@/context/store-context';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -9,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 
 export default function WarrantiesPage() {
+  const { activeStoreUser } = useStore();
   const [warranties, setWarranties] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -22,14 +24,17 @@ export default function WarrantiesPage() {
   });
 
   useEffect(() => {
-    fetchWarranties();
-    fetchProducts();
-    fetchCustomers();
-  }, []);
+    if (activeStoreUser) {
+      fetchWarranties();
+      fetchProducts();
+      fetchCustomers();
+    }
+  }, [activeStoreUser]);
 
   const fetchWarranties = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/warranties', {
+    const userId = activeStoreUser?.user_id?._id || '';
+    const res = await fetch(`/api/warranties?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -38,7 +43,8 @@ export default function WarrantiesPage() {
 
   const fetchProducts = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/products', {
+    const userId = activeStoreUser?.user_id?._id || '';
+    const res = await fetch(`/api/products?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -47,7 +53,8 @@ export default function WarrantiesPage() {
 
   const fetchCustomers = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/customers', {
+    const userId = activeStoreUser?.user_id?._id || '';
+    const res = await fetch(`/api/customers?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

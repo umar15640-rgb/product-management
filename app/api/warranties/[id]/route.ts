@@ -25,6 +25,21 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
   try {
     await connectDB();
 
+    // 1. Extract User ID
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const oldWarranty = await Warranty.findById(params.id);
     if (!oldWarranty) {
       return NextResponse.json({ error: 'Warranty not found' }, { status: 404 });
@@ -34,7 +49,7 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
     const warranty = await Warranty.findByIdAndUpdate(params.id, body, { new: true });
 
     await logAudit({
-      userId: 'system',
+      userId: userId,
       storeId: warranty!.store_id,
       entity: 'warranties',
       entityId: warranty!._id,

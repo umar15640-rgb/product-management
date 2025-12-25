@@ -38,7 +38,7 @@ export const storeSchema = z.object({
   store_logo: z.string().optional(),
   address: z.string().optional(),
   contact_phone: z.string().optional(),
-  serial_prefix: z.string().default('PRD'),
+  serial_prefix: z.string().default(''),
   serial_suffix: z.string().default(''),
   whatsapp_enabled: z.boolean().default(false),
   whatsapp_number: z.string().optional(),

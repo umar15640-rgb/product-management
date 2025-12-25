@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useStore } from '@/context/store-context';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 
 export default function CustomersPage() {
+  const { activeStoreUser } = useStore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,13 +27,14 @@ export default function CustomersPage() {
   });
 
   useEffect(() => {
-    fetchCustomers();
+    if (activeStoreUser) fetchCustomers();
     fetchStores();
-  }, []);
+  }, [activeStoreUser]);
 
   const fetchCustomers = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/customers', {
+    const userId = activeStoreUser?.user_id?._id || '';
+    const res = await fetch(`/api/customers?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

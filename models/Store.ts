@@ -7,7 +7,7 @@ const StoreSchema = new Schema<IStore>(
     store_logo: { type: String },
     address: { type: String },
     contact_phone: { type: String },
-    serial_prefix: { type: String, required: true, default: 'PRD' },
+    serial_prefix: { type: String, required: true, default: '' },
     serial_suffix: { type: String, default: '' },
     serial_counter: { type: Number, required: true, default: 1 },
     owner_user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts', required: true },

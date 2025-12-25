@@ -54,18 +54,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             headers: { Authorization: `Bearer ${token}` }
         });
         const usersData = await usersRes.json();
-        setAllStoreUsers(usersData.storeUsers || []);
+        const users = usersData.storeUsers || [];
+        setAllStoreUsers(users);
 
-        const myProfile = usersData.storeUsers?.find((su: any) => su.user_id?._id === userData.user?._id);
+        // Logic to determine active user (Persisted > Me > First)
+        const storedActiveUserId = localStorage.getItem('activeStoreUserId');
+        let selectedUser = null;
+
+        if (storedActiveUserId) {
+            selectedUser = users.find((u: any) => u._id === storedActiveUserId);
+        }
+
+        if (!selectedUser) {
+            const myProfile = users.find((su: any) => su.user_id?._id === userData.user?._id);
+            selectedUser = myProfile || users[0];
+        }
         
-        if (!activeStoreUser) {
-            setActiveStoreUser(myProfile || usersData.storeUsers?.[0]);
+        setActiveStoreUser(selectedUser);
+        if (selectedUser) {
+            localStorage.setItem('activeStoreUserId', selectedUser._id);
         }
       }
     } catch (error) {
       console.error('Error loading store context:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSetActiveUser = (user: any) => {
+    setActiveStoreUser(user);
+    if (user && user._id) {
+        localStorage.setItem('activeStoreUserId', user._id);
     }
   };
 
@@ -81,7 +101,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       activeStoreUser, 
       allStoreUsers, 
       isLoading,
-      setActiveStoreUser,
+      setActiveStoreUser: handleSetActiveUser,
       refreshContext: fetchContextData
     }}>
       {children}

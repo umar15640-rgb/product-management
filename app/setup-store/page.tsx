@@ -16,7 +16,7 @@ export default function SetupStorePage() {
     store_name: '',
     store_address: '',
     store_phone: '',
-    serial_prefix: 'PRD',
+    serial_prefix: '',
   });
 
   const handleNext = async (e?: React.FormEvent) => {

@@ -13,6 +13,22 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
   try {
     await connectDB();
 
+    // 1. Extract User ID from Token to ensure it's a valid ObjectId
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { status, notes } = statusSchema.parse(body);
 
@@ -29,7 +45,7 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
           timeline_events: {
             timestamp: new Date(),
             action: `Status changed to ${status}`,
-            user_id: 'system',
+            user_id: userId, 
             notes,
           },
         },
@@ -37,8 +53,9 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
       { new: true }
     );
 
+    // FIXED: Use actual userId for audit log as well
     await logAudit({
-      userId: 'system',
+      userId: userId, 
       storeId: claim!.store_id,
       entity: 'claims',
       entityId: claim!._id,

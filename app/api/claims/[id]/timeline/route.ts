@@ -12,6 +12,22 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
   try {
     await connectDB();
 
+    // 1. Extract User ID from Token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { action, notes } = timelineSchema.parse(body);
 
@@ -22,7 +38,7 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
           timeline_events: {
             timestamp: new Date(),
             action,
-            user_id: 'system',
+            user_id: userId, // FIXED: Uses valid ObjectId from token
             notes,
           },
         },

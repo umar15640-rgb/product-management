@@ -16,10 +16,14 @@ async function getHandler(req: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const storeId = searchParams.get('storeId');
+    const userId = searchParams.get('userId'); // Support filtering by user
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query = storeId ? { store_id: storeId } : {};
+    const query: any = {};
+    if (storeId) query.store_id = storeId;
+    if (userId) query.user_id = userId;
+
     const warranties = await Warranty.find(query)
       .populate('product_id')
       .populate('customer_id')
@@ -38,6 +42,22 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
+
+    // 1. Extract User ID from Token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
 
     const body = await req.json();
     const validated = warrantySchema.parse(body);
@@ -62,6 +82,7 @@ async function postHandler(req: NextRequest) {
 
     const qr_code_url = await generateQRCode(product.serial_number);
 
+    // Update to use manufacturing_date if available on product, else fallback
     const warranty_pdf_url = await generateWarrantyPDF({
       store_name: store.store_name,
       store_logo: store.store_logo,
@@ -75,7 +96,10 @@ async function postHandler(req: NextRequest) {
       brand: product.brand,
       category: product.category,
       serial_number: product.serial_number,
-      purchase_date: product.purchase_date.toLocaleDateString(),
+      // Use manufacturing_date here as requested previously
+      manufacturing_date: product.manufacturing_date 
+        ? new Date(product.manufacturing_date).toLocaleDateString() 
+        : new Date().toLocaleDateString(),
       warranty_start: warranty_start.toLocaleDateString(),
       warranty_end: warranty_end.toLocaleDateString(),
     });
@@ -84,7 +108,7 @@ async function postHandler(req: NextRequest) {
       product_id: validated.product_id,
       customer_id: validated.customer_id,
       store_id: product.store_id,
-      user_id: 'system',
+      user_id: userId, 
       warranty_start,
       warranty_end,
       qr_code_url,
@@ -93,7 +117,7 @@ async function postHandler(req: NextRequest) {
     });
 
     await logAudit({
-      userId: 'system',
+      userId: userId, // FIXED
       storeId: product.store_id,
       entity: 'warranties',
       entityId: warranty._id,

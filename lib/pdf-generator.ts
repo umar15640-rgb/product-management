@@ -16,7 +16,7 @@ interface WarrantyCardData {
   brand: string;
   category: string;
   serial_number: string;
-  purchase_date: string;
+  manufacturing_date: string;
   warranty_start: string;
   warranty_end: string;
 }
@@ -81,7 +81,7 @@ export async function generateWarrantyPDF(data: WarrantyCardData): Promise<strin
   yPosition -= 18;
   page.drawText(`Serial Number: ${data.serial_number}`, { x: 50, y: yPosition, size: 11, font: fontBold });
   yPosition -= 18;
-  page.drawText(`Purchase Date: ${data.purchase_date}`, { x: 50, y: yPosition, size: 11, font });
+  page.drawText(`Manufacturing Date: ${data.manufacturing_date}`, { x: 50, y: yPosition, size: 11, font });
   yPosition -= 30;
 
   page.drawText('WARRANTY PERIOD', { x: 50, y: yPosition, size: 14, font: fontBold });

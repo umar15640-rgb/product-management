@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useStore } from '@/context/store-context';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 
 export default function ProductsPage() {
+  const { activeStoreUser } = useStore();
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,18 +22,19 @@ export default function ProductsPage() {
     product_model: '',
     category: '',
     brand: '',
-    purchase_date: '',
+    manufacturing_date: '',
     base_warranty_months: 12,
   });
 
   useEffect(() => {
-    fetchProducts();
+    if (activeStoreUser) fetchProducts();
     fetchStores();
-  }, []);
+  }, [activeStoreUser]);
 
   const fetchProducts = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/products', {
+    const userId = activeStoreUser?.user_id?._id || '';
+    const res = await fetch(`/api/products?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -72,8 +75,8 @@ export default function ProductsPage() {
       setLoading(false);
       return;
     }
-    if (!formData.purchase_date) {
-      setError('Purchase date is required');
+    if (!formData.manufacturing_date) {
+      setError('Manufacturing date is required');
       setLoading(false);
       return;
     }
@@ -107,7 +110,7 @@ export default function ProductsPage() {
         product_model: '',
         category: '',
         brand: '',
-        purchase_date: '',
+        manufacturing_date: '',
         base_warranty_months: 12,
       });
     } catch (err: any) {
@@ -150,7 +153,7 @@ export default function ProductsPage() {
                       <TableHead>Brand</TableHead>
                       <TableHead>Model</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Purchase Date</TableHead>
+                      <TableHead>Manufacturing Date</TableHead>
                       <TableHead>Warranty</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -163,7 +166,7 @@ export default function ProductsPage() {
                         <TableCell>
                           <Badge variant="info">{product.category}</Badge>
                         </TableCell>
-                        <TableCell>{new Date(product.purchase_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(product.manufacturing_date).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge variant="primary">{product.base_warranty_months} months</Badge>
                         </TableCell>
@@ -227,10 +230,10 @@ export default function ProductsPage() {
             />
 
             <Input
-              label="Purchase Date"
+              label="Manufacturing Date"
               type="date"
-              value={formData.purchase_date}
-              onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+              value={formData.manufacturing_date}
+              onChange={(e) => setFormData({ ...formData, manufacturing_date: e.target.value })}
               required
             />
 

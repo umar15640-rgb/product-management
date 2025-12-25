@@ -10,10 +10,15 @@ async function getHandler(req: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const storeId = searchParams.get('storeId');
+    const userId = searchParams.get('userId'); 
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query = storeId ? { store_id: storeId } : {};
+    const query: any = storeId ? { store_id: storeId } : {};
+    
+    // Optional: Filter claims related to warranties owned by this user
+    // This requires a more complex query or assumed permission scope
+    
     const claims = await Claim.find(query)
       .populate({
         path: 'warranty_id',
@@ -35,6 +40,22 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
+    // 1. Extract User ID
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await req.json();
     const validated = claimSchema.parse(body);
 
@@ -50,7 +71,7 @@ async function postHandler(req: NextRequest) {
         {
           timestamp: new Date(),
           action: 'Claim created',
-          user_id: 'system',
+          user_id: userId, // FIXED: Use actual userId
         },
       ],
     });
@@ -58,7 +79,7 @@ async function postHandler(req: NextRequest) {
     await Warranty.findByIdAndUpdate(validated.warranty_id, { status: 'claimed' });
 
     await logAudit({
-      userId: 'system',
+      userId: userId, // FIXED
       storeId: warranty.store_id,
       entity: 'claims',
       entityId: claim._id,

@@ -62,7 +62,7 @@ export interface IProduct {
   serial_prefix_used: string;
   serial_suffix_used: string;
   serial_number_index: number;
-  purchase_date: Date;
+  manufacturing_date: Date;
   base_warranty_months: number;
   created_at: Date;
   updated_at: Date;

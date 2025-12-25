@@ -8,6 +8,8 @@ async function getHandler(req: NextRequest) {
   try {
     await connectDB();
 
+    // Ideally, filter stores by the user's access if this is a multi-tenant system
+    // For now, returning all as per original logic, but be aware of data leak potential
     const allStores = await Store.find();
 
     return NextResponse.json({ stores: allStores });
@@ -20,15 +22,31 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
+    // 1. Extract User ID
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const body = await req.json();
     const validated = storeSchema.parse(body);
 
     const store = await Store.create({
       ...validated,
+      owner_user_id: userId, // Ensure owner is set correctly if not passed in body
     });
 
     await logAudit({
-      userId: 'system',
+      userId: userId, // FIXED
       storeId: store._id,
       entity: 'stores',
       entityId: store._id,

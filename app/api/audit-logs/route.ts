@@ -9,6 +9,7 @@ async function handler(req: NextRequest) {
     const storeId = searchParams.get('storeId');
     const entity = searchParams.get('entity');
     const entityId = searchParams.get('entityId');
+    const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
@@ -16,6 +17,7 @@ async function handler(req: NextRequest) {
     if (storeId) query.store_id = storeId;
     if (entity) query.entity = entity;
     if (entityId) query.entity_id = entityId;
+    if (userId) query.user_id = userId;
 
     const logs = await SystemAuditLog.find(query)
       .populate('user_id', 'full_name email')

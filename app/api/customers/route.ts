@@ -9,10 +9,13 @@ async function getHandler(req: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const storeId = searchParams.get('storeId');
+    const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query = storeId ? { store_id: storeId } : {};
+    const query: any = {};
+    if (storeId) query.store_id = storeId;
+    if (userId) query.user_id = userId;
     const customers = await Customer.find(query)
       .skip((page - 1) * limit)
       .limit(limit)
