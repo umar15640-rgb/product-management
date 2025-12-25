@@ -46,7 +46,7 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
     const product = await Product.findByIdAndUpdate(params.id, body, { new: true });
 
     await logAudit({
-      userId: userId, // FIXED
+      userId: userId,
       storeId: product!.store_id,
       entity: 'products',
       entityId: product!._id,

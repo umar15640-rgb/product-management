@@ -29,7 +29,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const userRes = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!userRes.ok) throw new Error('Auth failed');
+      if (!userRes.ok) {
+        const errorData = await userRes.text();
+        throw new Error(`Auth failed: ${userRes.status} - ${errorData}`);
+      }
       const userData = await userRes.json();
       setCurrentUser(userData.user);
 
