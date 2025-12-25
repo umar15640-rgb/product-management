@@ -22,11 +22,25 @@ const storeUserSchema = z.object({
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
+    
+    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
+    const userId = getAuthenticatedUserId(req);
+    
     const { searchParams } = new URL(req.url);
     const storeId = searchParams.get('store_id');
 
     if (!storeId) {
         return NextResponse.json({ error: 'store_id is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this store
+    const storeUser = await StoreUser.findOne({
+      store_id: storeId,
+      user_id: userId,
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const storeUsers = await StoreUser.find({ store_id: storeId })
@@ -36,6 +50,9 @@ async function getHandler(req: NextRequest) {
 
     return NextResponse.json({ storeUsers });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -44,8 +61,25 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
+    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
+    const userId = getAuthenticatedUserId(req);
+
     const body = await req.json();
     const validated = storeUserSchema.parse(body);
+
+    // Verify that the current user is an admin of the store
+    const adminStoreUser = await StoreUser.findOne({
+      store_id: validated.store_id,
+      user_id: userId,
+      role: 'admin',
+    });
+
+    if (!adminStoreUser) {
+      return NextResponse.json(
+        { error: 'Only admin users can create store users' },
+        { status: 403 }
+      );
+    }
 
     let targetUserId = validated.user_id;
 
@@ -94,6 +128,9 @@ async function postHandler(req: NextRequest) {
     return NextResponse.json({ storeUser }, { status: 201 });
 
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     if (error instanceof z.ZodError) {
         return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
     }

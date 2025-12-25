@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { UserAccount } from '@/models/UserAccount';
+import { getAuthenticatedUserId } from '@/lib/auth-helpers';
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
-    }
-
-    const token = authHeader.slice(7);
-    let userId: string;
-    
-    try {
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-      userId = decoded.userId;
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = getAuthenticatedUserId(req);
 
     const user = await UserAccount.findById(userId).select('-password_hash');
     if (!user) {
@@ -28,6 +16,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ user });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

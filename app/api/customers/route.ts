@@ -38,15 +38,8 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
     }
 
-    const token = authHeader.slice(7);
-    let userId: string;
-    
-    try {
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-      userId = decoded.userId;
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
+    const userId = getAuthenticatedUserId(req);
 
     const body = await req.json();
     const validated = customerSchema.parse(body);

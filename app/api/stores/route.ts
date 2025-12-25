@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Store } from '@/models/Store';
+import { StoreUser } from '@/models/StoreUser';
 import { storeSchema } from '@/middleware/validation';
 import { logAudit } from '@/lib/audit-logger';
+import { getAuthenticatedUserId } from '@/lib/auth-helpers';
 
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
 
-    // Ideally, filter stores by the user's access if this is a multi-tenant system
-    // For now, returning all as per original logic, but be aware of data leak potential
-    const allStores = await Store.find();
+    const userId = getAuthenticatedUserId(req);
 
-    return NextResponse.json({ stores: allStores });
+    // Get all stores that the user has access to via StoreUser
+    const storeUsers = await StoreUser.find({ user_id: userId })
+      .populate('store_id')
+      .select('store_id');
+
+    const stores = storeUsers
+      .map((su: any) => su.store_id)
+      .filter((store: any) => store !== null);
+
+    return NextResponse.json({ stores });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -22,31 +34,25 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
-    // 1. Extract User ID
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
-    }
-
-    const token = authHeader.slice(7);
-    let userId: string;
-    try {
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-      userId = decoded.userId;
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
+    const userId = getAuthenticatedUserId(req);
     const body = await req.json();
     const validated = storeSchema.parse(body);
 
     const store = await Store.create({
       ...validated,
-      owner_user_id: userId, // Ensure owner is set correctly if not passed in body
+      owner_user_id: userId,
+    });
+
+    // Create store user with admin role
+    await StoreUser.create({
+      store_id: store._id,
+      user_id: userId,
+      role: 'admin',
+      permissions: ['all'],
     });
 
     await logAudit({
-      userId: userId, // FIXED
+      userId: userId,
       storeId: store._id,
       entity: 'stores',
       entityId: store._id,
@@ -56,6 +62,9 @@ async function postHandler(req: NextRequest) {
 
     return NextResponse.json({ store }, { status: 201 });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

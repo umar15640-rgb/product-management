@@ -39,14 +39,8 @@ async function postHandler(req: NextRequest) {
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
     }
-    const token = authHeader.slice(7);
-    let userId: string;
-    try {
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-      userId = decoded.userId;
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
+    const userId = getAuthenticatedUserId(req);
 
     const body = await req.json();
     // Assuming you updated validation schema, or map it manually here if schema isn't updated

@@ -15,6 +15,10 @@ export default function SignupPage() {
     email: '',
     phone: '',
     password: '',
+    store_name: '',
+    store_address: '',
+    store_phone: '',
+    serial_prefix: 'PRD',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,22 +62,12 @@ export default function SignupPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', data.user.id);
+      if (data.store?.id) {
+        localStorage.setItem('currentStoreId', data.store.id);
+      }
       document.cookie = `token=${data.token}; path=/; max-age=604800`;
       
-      if (data.isExistingUser) {
-        const storesRes = await fetch('/api/stores', {
-          headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        const storesData = await storesRes.json();
-        
-        if (storesData.stores && storesData.stores.length > 0) {
-          router.push('/dashboard');
-        } else {
-          router.push('/setup-store');
-        }
-      } else {
-        router.push('/setup-store');
-      }
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -128,6 +122,38 @@ export default function SignupPage() {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
               />
+              <div className="pt-2 border-t border-neutral-200">
+                <p className="text-sm font-semibold text-neutral-700 mb-3">Store Information</p>
+                <Input
+                  label="Store Name"
+                  placeholder="Your Store Name"
+                  value={formData.store_name}
+                  onChange={(e) => setFormData({ ...formData, store_name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Store Address (Optional)"
+                  placeholder="City, Country"
+                  value={formData.store_address}
+                  onChange={(e) => setFormData({ ...formData, store_address: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Store Phone (Optional)"
+                    placeholder="+1 234..."
+                    value={formData.store_phone}
+                    onChange={(e) => setFormData({ ...formData, store_phone: e.target.value })}
+                  />
+                  <Input
+                    label="Serial Prefix"
+                    placeholder="PRD"
+                    value={formData.serial_prefix}
+                    onChange={(e) => setFormData({ ...formData, serial_prefix: e.target.value.toUpperCase() })}
+                    maxLength={4}
+                    required
+                  />
+                </div>
+              </div>
 
               <Button type="submit" className="w-full h-11" loading={loading}>
                 <span>Get Started</span>

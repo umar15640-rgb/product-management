@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useStore } from '@/context/store-context';
 import { 
   LuLayoutDashboard, 
   LuStore, 
@@ -16,19 +17,38 @@ import {
 import { FaWhatsapp } from 'react-icons/fa';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard },
-  { name: 'Stores', href: '/stores', icon: LuStore },
-  { name: 'Store Users', href: '/store-users', icon: LuUsers },
-  { name: 'Customers', href: '/customers', icon: LuUser },
-  { name: 'Products', href: '/products', icon: LuPackage },
-  { name: 'Warranties', href: '/warranties', icon: LuShieldCheck },
-  { name: 'Claims', href: '/claims', icon: LuClipboardList },
-  { name: 'Audit Logs', href: '/audit-logs', icon: LuFileClock },
-  { name: 'WhatsApp', href: '/whatsapp', icon: FaWhatsapp },
+  { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard, permission: null },
+  { name: 'Customers', href: '/customers', icon: LuUser, permission: 'view_customers' },
+  { name: 'Products', href: '/products', icon: LuPackage, permission: 'view_products' },
+  { name: 'Warranties', href: '/warranties', icon: LuShieldCheck, permission: 'view_warranties' },
+  { name: 'Claims', href: '/claims', icon: LuClipboardList, permission: 'view_claims' },
+  { name: 'Store Users', href: '/store-users', icon: LuUsers, permission: 'manage_users' },
+  { name: 'Settings', href: '/settings', icon: LuStore, permission: 'manage_settings' },
+  { name: 'Audit Logs', href: '/audit-logs', icon: LuFileClock, permission: 'view_audit_logs' },
+  { name: 'WhatsApp', href: '/whatsapp', icon: FaWhatsapp, permission: 'manage_whatsapp' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { activeStoreUser } = useStore();
+
+  // Check if user has permission
+  const hasPermission = (permission: string | null) => {
+    if (!permission) return true; // No permission required
+    if (!activeStoreUser) return false;
+    
+    // Admin has all permissions
+    if (activeStoreUser.role === 'admin') return true;
+    
+    // Check if 'all' permission is granted
+    if (activeStoreUser.permissions?.includes('all')) return true;
+    
+    // Check specific permission
+    return activeStoreUser.permissions?.includes(permission) || false;
+  };
+
+  // Filter navigation based on permissions
+  const filteredNavigation = navigation.filter(item => hasPermission(item.permission));
 
   return (
     <div className="flex flex-col w-72 bg-white border-r border-neutral-200 min-h-screen shadow-sm">
@@ -38,8 +58,8 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+        {filteredNavigation.map((item) => {
+          const isActive = pathname.startsWith(item.href.split('?')[0]); // Remove query params for comparison
           const Icon = item.icon; // Get the icon component
           
           return (

@@ -126,3 +126,13 @@ export interface IWhatsAppEventLog {
   metadata?: any;
   created_at: Date;
 }
+
+export interface IApiKeyManagement {
+  _id: Types.ObjectId;
+  store_id: Types.ObjectId;
+  name: string;
+  status: 'Enabled' | 'Disabled';
+  expired_at?: Date;
+  created_at: Date;
+  updated_at: Date;
+}
