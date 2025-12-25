@@ -13,6 +13,8 @@ export default function WarrantiesPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     product_id: '',
     customer_id: '',
@@ -54,24 +56,54 @@ export default function WarrantiesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    if (!formData.product_id) {
+      setError('Please select a product');
+      setLoading(false);
+      return;
+    }
+    if (!formData.customer_id) {
+      setError('Please select a customer');
+      setLoading(false);
+      return;
+    }
+    if (!formData.warranty_start) {
+      setError('Warranty start date is required');
+      setLoading(false);
+      return;
+    }
+    
     const token = localStorage.getItem('token');
     
-    await fetch('/api/warranties', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await fetch('/api/warranties', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setIsModalOpen(false);
-    fetchWarranties();
-    setFormData({
-      product_id: '',
-      customer_id: '',
-      warranty_start: '',
-    });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to register warranty');
+      }
+
+      setIsModalOpen(false);
+      fetchWarranties();
+      setFormData({
+        product_id: '',
+        customer_id: '',
+        warranty_start: '',
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -160,6 +192,11 @@ export default function WarrantiesPage() {
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register New Warranty" size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Product <span className="text-danger-600">*</span>
@@ -215,7 +252,7 @@ export default function WarrantiesPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Register Warranty</Button>
+              <Button type="submit" loading={loading}>Register Warranty</Button>
             </div>
           </form>
         </Modal>

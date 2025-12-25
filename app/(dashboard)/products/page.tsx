@@ -13,6 +13,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     store_id: '',
     product_model: '',
@@ -47,27 +49,72 @@ export default function ProductsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    if (!formData.store_id) {
+      setError('Please select a store');
+      setLoading(false);
+      return;
+    }
+    if (!formData.brand.trim()) {
+      setError('Brand is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.product_model.trim()) {
+      setError('Model is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.category.trim()) {
+      setError('Category is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.purchase_date) {
+      setError('Purchase date is required');
+      setLoading(false);
+      return;
+    }
+    if (formData.base_warranty_months < 1) {
+      setError('Warranty period must be at least 1 month');
+      setLoading(false);
+      return;
+    }
+    
     const token = localStorage.getItem('token');
     
-    await fetch('/api/products', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setIsModalOpen(false);
-    fetchProducts();
-    setFormData({
-      store_id: '',
-      product_model: '',
-      category: '',
-      brand: '',
-      purchase_date: '',
-      base_warranty_months: 12,
-    });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add product');
+      }
+
+      setIsModalOpen(false);
+      fetchProducts();
+      setFormData({
+        store_id: '',
+        product_model: '',
+        category: '',
+        brand: '',
+        purchase_date: '',
+        base_warranty_months: 12,
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -131,6 +178,11 @@ export default function ProductsPage() {
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Product" size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Store <span className="text-danger-600">*</span>
@@ -196,7 +248,7 @@ export default function ProductsPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create Product</Button>
+              <Button type="submit" loading={loading}>Create Product</Button>
             </div>
           </form>
         </Modal>

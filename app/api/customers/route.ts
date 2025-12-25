@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Customer } from '@/models/Customer';
-import { withAuth } from '@/middleware/auth';
 import { customerSchema } from '@/middleware/validation';
 import { logAudit } from '@/lib/audit-logger';
 
@@ -30,15 +29,32 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-    const user = (req as any).user;
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
 
     const body = await req.json();
     const validated = customerSchema.parse(body);
 
-    const customer = await Customer.create(validated);
+    const customer = await Customer.create({
+      ...validated,
+      user_id: userId,
+    });
 
     await logAudit({
-      userId: user.userId,
+      userId,
       storeId: validated.store_id,
       entity: 'customers',
       entityId: customer._id,
@@ -52,5 +68,5 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = getHandler;
+export const POST = postHandler;

@@ -56,7 +56,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const usersData = await usersRes.json();
         setAllStoreUsers(usersData.storeUsers || []);
 
-        const myProfile = usersData.storeUsers?.find((su: any) => su.user_id._id === userData.user._id);
+        const myProfile = usersData.storeUsers?.find((su: any) => su.user_id?._id === userData.user?._id);
         
         if (!activeStoreUser) {
             setActiveStoreUser(myProfile || usersData.storeUsers?.[0]);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { SystemAuditLog } from '@/models/SystemAuditLog';
-import { withAuth } from '@/middleware/auth';
 
 async function handler(req: NextRequest) {
   try {
@@ -32,4 +31,4 @@ async function handler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(handler);
+export const GET = handler;

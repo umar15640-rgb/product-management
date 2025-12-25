@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { StoreUser } from '@/models/StoreUser';
-import { withAuth } from '@/middleware/auth';
 
 async function putHandler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -35,5 +34,5 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export const PUT = withAuth(putHandler);
-export const DELETE = withAuth(deleteHandler);
+export const PUT = putHandler;
+export const DELETE = deleteHandler;

@@ -11,6 +11,7 @@ export default function SetupStorePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     store_name: '',
     store_address: '',
@@ -20,37 +21,49 @@ export default function SetupStorePage() {
 
   const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setError('');
     
-    if (step === 2) {
+    if (step === 1) {
+      if (!formData.store_name.trim()) {
+        setError('Store name is required');
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      if (formData.store_phone && formData.store_phone.length < 10) {
+        setError('Phone number must be at least 10 digits');
+        return;
+      }
+      if (!formData.serial_prefix.trim()) {
+        setError('Serial prefix is required');
+        return;
+      }
       await finishSetup();
-    } else {
-      setStep(step + 1);
     }
   };
 
   const finishSetup = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
       const res = await fetch('/api/stores/setup', {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({...formData, user_id: userId}),
       });
 
-      if (!res.ok) throw new Error('Setup failed');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Setup failed');
+      }
       
-      // Move to success step
       setStep(3);
-      
-      // Auto-redirect after 2 seconds
       setTimeout(() => router.push('/dashboard'), 2000);
     } catch (error) {
-      console.error(error);
-      alert("Failed to create store. Please try again.");
+      setError(error instanceof Error ? error.message : 'Failed to create store');
     } finally {
       setLoading(false);
     }
@@ -92,6 +105,11 @@ export default function SetupStorePage() {
             
             {step === 1 && (
               <form onSubmit={handleNext} className="space-y-6">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
                 <div className="flex justify-center mb-6">
                   <div className="w-20 h-20 bg-primary-50 rounded-2xl flex items-center justify-center text-primary-600">
                     <LuStore className="w-10 h-10" />
@@ -114,6 +132,11 @@ export default function SetupStorePage() {
 
             {step === 2 && (
               <form onSubmit={handleNext} className="space-y-6">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
                 <Input 
                   label="Business Address (Optional)" 
                   placeholder="City, Country"

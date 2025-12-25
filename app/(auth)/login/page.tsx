@@ -19,6 +19,17 @@ export default function LoginPage() {
       setLoading(true);
       setError('');
   
+      if (!formData.email.includes('@')) {
+        setError('Invalid email address');
+        setLoading(false);
+        return;
+      }
+      if (!formData.password) {
+        setError('Password is required');
+        setLoading(false);
+        return;
+      }
+  
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -33,6 +44,7 @@ export default function LoginPage() {
         }
   
         localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.user.id);
         document.cookie = `token=${data.token}; path=/; max-age=604800`;
         
         const storesRes = await fetch('/api/stores', {

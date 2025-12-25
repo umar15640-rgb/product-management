@@ -4,7 +4,6 @@ import { Warranty } from '@/models/Warranty';
 import { Product } from '@/models/Product';
 import { Customer } from '@/models/Customer';
 import { Store } from '@/models/Store';
-import { withAuth } from '@/middleware/auth';
 import { warrantySchema } from '@/middleware/validation';
 import { generateQRCode } from '@/lib/qr-generator';
 import { generateWarrantyPDF } from '@/lib/pdf-generator';
@@ -39,7 +38,6 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-    const user = (req as any).user;
 
     const body = await req.json();
     const validated = warrantySchema.parse(body);
@@ -86,7 +84,7 @@ async function postHandler(req: NextRequest) {
       product_id: validated.product_id,
       customer_id: validated.customer_id,
       store_id: product.store_id,
-      user_id: user.userId,
+      user_id: 'system',
       warranty_start,
       warranty_end,
       qr_code_url,
@@ -95,7 +93,7 @@ async function postHandler(req: NextRequest) {
     });
 
     await logAudit({
-      userId: user.userId,
+      userId: 'system',
       storeId: product.store_id,
       entity: 'warranties',
       entityId: warranty._id,
@@ -120,5 +118,5 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = getHandler;
+export const POST = postHandler;

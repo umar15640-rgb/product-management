@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
-import { withAuth } from '@/middleware/auth';
 
 async function getHandler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -23,4 +22,4 @@ async function getHandler(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export const GET = withAuth(getHandler);
+export const GET = getHandler;

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
-import { withAuth } from '@/middleware/auth';
 import { z } from 'zod';
 
 const timelineSchema = z.object({
@@ -12,7 +11,6 @@ const timelineSchema = z.object({
 async function handler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectDB();
-    const user = (req as any).user;
 
     const body = await req.json();
     const { action, notes } = timelineSchema.parse(body);
@@ -24,7 +22,7 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
           timeline_events: {
             timestamp: new Date(),
             action,
-            user_id: user.userId,
+            user_id: 'system',
             notes,
           },
         },
@@ -42,4 +40,4 @@ async function handler(req: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-export const POST = withAuth(handler);
+export const POST = handler;

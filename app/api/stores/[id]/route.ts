@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Store } from '@/models/Store';
-import { withAuth } from '@/middleware/auth';
 import { logAudit } from '@/lib/audit-logger';
 
 async function getHandler(req: NextRequest, { params }: { params: { id: string } }) {
@@ -22,7 +21,6 @@ async function getHandler(req: NextRequest, { params }: { params: { id: string }
 async function putHandler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectDB();
-    const user = (req as any).user;
 
     const oldStore = await Store.findById(params.id);
     if (!oldStore) {
@@ -33,7 +31,7 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
     const store = await Store.findByIdAndUpdate(params.id, body, { new: true });
 
     await logAudit({
-      userId: user.userId,
+      userId: 'system',
       storeId: store!._id,
       entity: 'stores',
       entityId: store!._id,
@@ -51,7 +49,6 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
 async function deleteHandler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectDB();
-    const user = (req as any).user;
 
     const store = await Store.findByIdAndDelete(params.id);
     if (!store) {
@@ -59,7 +56,7 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
     }
 
     await logAudit({
-      userId: user.userId,
+      userId: 'system',
       storeId: store._id,
       entity: 'stores',
       entityId: store._id,
@@ -73,6 +70,6 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export const GET = withAuth(getHandler);
-export const PUT = withAuth(putHandler);
-export const DELETE = withAuth(deleteHandler);
+export const GET = getHandler;
+export const PUT = putHandler;
+export const DELETE = deleteHandler;

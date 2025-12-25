@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { StoreUser } from '@/models/StoreUser';
 import { UserAccount } from '@/models/UserAccount';
-import { withAuth } from '@/middleware/auth';
 import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -62,7 +61,6 @@ async function postHandler(req: NextRequest) {
       const existingUser = await UserAccount.findOne({ email: validated.email });
 
       if (existingUser) {
-        // FIXED: Convert ObjectId to string
         targetUserId = existingUser._id.toString();
       } else {
         const password_hash = await hashPassword(validated.password);
@@ -72,7 +70,6 @@ async function postHandler(req: NextRequest) {
           phone: validated.phone || '',
           password_hash,
         });
-        // FIXED: Convert ObjectId to string
         targetUserId = newUser._id.toString();
       }
     }
@@ -104,5 +101,5 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = getHandler;
+export const POST = postHandler;

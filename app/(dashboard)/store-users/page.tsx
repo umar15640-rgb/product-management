@@ -15,6 +15,7 @@ export default function StoreUsersPage() {
   const [storeUsers, setStoreUsers] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   // New User Form Data
   const [formData, setFormData] = useState({
@@ -43,15 +44,31 @@ export default function StoreUsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    const token = localStorage.getItem('token');
     
-    // NOTE: In a real implementation, you'd likely have a specific API endpoint 
-    // to "Invite User" or "Create Staff" which handles both UserAccount creation 
-    // and StoreUser linking transactionally. 
-    // Here we will reuse the signup endpoint logic or a dedicated endpoint.
-    // For this example, let's assume we post to /api/store-users with full details
-    // and the backend handles the account creation if it doesn't exist.
+    if (!formData.full_name.trim()) {
+      setError('Full name is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.email.includes('@')) {
+      setError('Invalid email address');
+      setLoading(false);
+      return;
+    }
+    if (!formData.phone.trim() || formData.phone.length < 10) {
+      setError('Phone number must be at least 10 digits');
+      setLoading(false);
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+    
+    const token = localStorage.getItem('token');
     
     try {
         const res = await fetch('/api/store-users', {
@@ -62,25 +79,28 @@ export default function StoreUsersPage() {
             },
             body: JSON.stringify({
                 ...formData,
-                store_id: currentStore._id // Force current store
+                store_id: currentStore._id
             }),
         });
 
-        if (res.ok) {
-            setIsModalOpen(false);
-            fetchStoreUsers();
-            refreshContext(); // Refresh global context so the new user appears in the switcher
-            setFormData({
-                full_name: '',
-                email: '',
-                phone: '',
-                password: '',
-                role: 'staff',
-                permissions: [],
-            });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to add staff member');
         }
-    } catch (error) {
-        console.error("Failed to add user", error);
+
+        setIsModalOpen(false);
+        fetchStoreUsers();
+        refreshContext();
+        setFormData({
+            full_name: '',
+            email: '',
+            phone: '',
+            password: '',
+            role: 'staff',
+            permissions: [],
+        });
+    } catch (err: any) {
+        setError(err.message);
     } finally {
         setLoading(false);
     }
@@ -148,6 +168,11 @@ export default function StoreUsersPage() {
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Staff Member" size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
                 <Input
                     label="Full Name"

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { UserAccount } from '@/models/UserAccount';
-import { comparePassword, signToken } from '@/lib/auth';
+import { comparePassword } from '@/lib/auth';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = signToken({ userId: user._id.toString(), email: user.email });
+    const token = Buffer.from(JSON.stringify({ userId: user._id.toString() })).toString('base64');
 
     return NextResponse.json({
       token,

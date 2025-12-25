@@ -3,7 +3,6 @@ import { connectDB } from '@/lib/db';
 import { Store } from '@/models/Store';
 import { StoreUser } from '@/models/StoreUser';
 import { UserAccount } from '@/models/UserAccount';
-import { verifyToken, extractTokenFromHeader } from '@/lib/auth';
 import { z } from 'zod';
 
 const setupStoreSchema = z.object({
@@ -11,25 +10,16 @@ const setupStoreSchema = z.object({
   store_address: z.string().optional(),
   store_phone: z.string().optional(),
   serial_prefix: z.string().default('PRD'),
+  user_id: z.string(),
 });
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const authHeader = req.headers.get('authorization');
-    const token = extractTokenFromHeader(authHeader ?? undefined);
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-    const userId = decoded.userId;
-
     const body = await req.json();
     const validated = setupStoreSchema.parse(body);
+    const userId = validated.user_id;
 
     const existingStore = await Store.findOne({ owner_user_id: userId });
     if (existingStore) {

@@ -16,7 +16,6 @@ const UserAccountSchema = new Schema<IUserAccount>(
   }
 );
 
-UserAccountSchema.index({ email: 1 });
 UserAccountSchema.index({ phone: 1 });
 
 export const UserAccount: Model<IUserAccount> =

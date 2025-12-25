@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
 import { Warranty } from '@/models/Warranty';
-import { withAuth } from '@/middleware/auth';
 import { claimSchema } from '@/middleware/validation';
 import { logAudit } from '@/lib/audit-logger';
 
@@ -35,7 +34,6 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-    const user = (req as any).user;
 
     const body = await req.json();
     const validated = claimSchema.parse(body);
@@ -52,7 +50,7 @@ async function postHandler(req: NextRequest) {
         {
           timestamp: new Date(),
           action: 'Claim created',
-          user_id: user.userId,
+          user_id: 'system',
         },
       ],
     });
@@ -60,7 +58,7 @@ async function postHandler(req: NextRequest) {
     await Warranty.findByIdAndUpdate(validated.warranty_id, { status: 'claimed' });
 
     await logAudit({
-      userId: user.userId,
+      userId: 'system',
       storeId: warranty.store_id,
       entity: 'claims',
       entityId: claim._id,
@@ -74,5 +72,5 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = getHandler;
+export const POST = postHandler;

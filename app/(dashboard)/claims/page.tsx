@@ -13,6 +13,8 @@ export default function ClaimsPage() {
   const [warranties, setWarranties] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     warranty_id: '',
     claim_type: 'repair',
@@ -44,24 +46,54 @@ export default function ClaimsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    if (!formData.warranty_id) {
+      setError('Please select a warranty');
+      setLoading(false);
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError('Description is required');
+      setLoading(false);
+      return;
+    }
+    if (formData.description.length < 10) {
+      setError('Description must be at least 10 characters');
+      setLoading(false);
+      return;
+    }
+    
     const token = localStorage.getItem('token');
     
-    await fetch('/api/claims', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await fetch('/api/claims', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setIsModalOpen(false);
-    fetchClaims();
-    setFormData({
-      warranty_id: '',
-      claim_type: 'repair',
-      description: '',
-    });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create claim');
+      }
+
+      setIsModalOpen(false);
+      fetchClaims();
+      setFormData({
+        warranty_id: '',
+        claim_type: 'repair',
+        description: '',
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateStatus = async (claimId: string, status: string) => {
@@ -190,6 +222,11 @@ export default function ClaimsPage() {
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Claim" size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Warranty <span className="text-danger-600">*</span>
@@ -243,7 +280,7 @@ export default function ClaimsPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create Claim</Button>
+              <Button type="submit" loading={loading}>Create Claim</Button>
             </div>
           </form>
         </Modal>

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/models/Product';
-import { withAuth } from '@/middleware/auth';
 import { productSchema } from '@/middleware/validation';
 import { generateSerialNumber } from '@/lib/serial-generator';
 import { logAudit } from '@/lib/audit-logger';
@@ -31,7 +30,21 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-    const user = (req as any).user;
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    let userId: string;
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      userId = decoded.userId;
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
 
     const body = await req.json();
     const validated = productSchema.parse(body);
@@ -41,12 +54,12 @@ async function postHandler(req: NextRequest) {
     const product = await Product.create({
       ...validated,
       ...serialData,
-      user_id: user.userId,
+      user_id: userId,
       purchase_date: new Date(validated.purchase_date),
     });
 
     await logAudit({
-      userId: user.userId,
+      userId,
       storeId: validated.store_id,
       entity: 'products',
       entityId: product._id,
@@ -60,5 +73,5 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = getHandler;
+export const POST = postHandler;

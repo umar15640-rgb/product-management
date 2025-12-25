@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { UserAccount } from '@/models/UserAccount';
-import { hashPassword, signToken } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
-// Simple schema just for the initial account creation
 const simpleSignupSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
@@ -21,9 +20,7 @@ export async function POST(req: NextRequest) {
 
     const existingUser = await UserAccount.findOne({ email: validated.email });
     if (existingUser) {
-      const token = signToken({ userId: existingUser._id.toString(), email: existingUser.email });
       return NextResponse.json({
-        token,
         user: { id: existingUser._id, email: existingUser.email },
         isExistingUser: true
       }, { status: 200 });
@@ -38,10 +35,7 @@ export async function POST(req: NextRequest) {
       password_hash,
     });
 
-    const token = signToken({ userId: user._id.toString(), email: user.email });
-
     return NextResponse.json({
-      token,
       user: { id: user._id, email: user.email },
       isExistingUser: false
     }, { status: 201 });

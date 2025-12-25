@@ -24,6 +24,27 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
 
+    if (!formData.full_name.trim()) {
+      setError('Full name is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.email.includes('@')) {
+      setError('Invalid email address');
+      setLoading(false);
+      return;
+    }
+    if (!formData.phone.trim() || formData.phone.length < 10) {
+      setError('Phone number must be at least 10 digits');
+      setLoading(false);
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -36,6 +57,7 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(data.error || 'Signup failed');
 
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userId', data.user.id);
       document.cookie = `token=${data.token}; path=/; max-age=604800`;
       
       if (data.isExistingUser) {

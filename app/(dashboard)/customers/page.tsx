@@ -13,6 +13,8 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     store_id: '',
     customer_name: '',
@@ -47,27 +49,62 @@ export default function CustomersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    if (!formData.store_id) {
+      setError('Please select a store');
+      setLoading(false);
+      return;
+    }
+    if (!formData.customer_name.trim()) {
+      setError('Customer name is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.phone.trim() || formData.phone.length < 10) {
+      setError('Phone number must be at least 10 digits');
+      setLoading(false);
+      return;
+    }
+    if (formData.email && !formData.email.includes('@')) {
+      setError('Invalid email address');
+      setLoading(false);
+      return;
+    }
+    
     const token = localStorage.getItem('token');
     
-    await fetch('/api/customers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setIsModalOpen(false);
-    fetchCustomers();
-    setFormData({
-      store_id: '',
-      customer_name: '',
-      phone: '',
-      email: '',
-      address: '',
-      gst_number: '',
-    });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add customer');
+      }
+
+      setIsModalOpen(false);
+      fetchCustomers();
+      setFormData({
+        store_id: '',
+        customer_name: '',
+        phone: '',
+        email: '',
+        address: '',
+        gst_number: '',
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -129,6 +166,11 @@ export default function CustomersPage() {
 
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Customer" size="md">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Store <span className="text-danger-600">*</span>
@@ -190,7 +232,7 @@ export default function CustomersPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Add Customer</Button>
+              <Button type="submit" loading={loading}>Add Customer</Button>
             </div>
           </form>
         </Modal>
