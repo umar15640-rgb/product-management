@@ -31,7 +31,11 @@ export interface IStore {
 export interface IStoreUser {
   _id: Types.ObjectId;
   store_id: Types.ObjectId;
-  user_id: Types.ObjectId;
+  user_account_id?: Types.ObjectId;
+  full_name: string;
+  email: string;
+  phone: string;
+  password_hash: string;
   role: 'admin' | 'manager' | 'staff';
   permissions: string[];
   created_at: Date;

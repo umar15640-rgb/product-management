@@ -15,6 +15,9 @@ const simpleSignupSchema = z.object({
   store_address: z.string().optional(),
   store_phone: z.string().optional(),
   serial_prefix: z.string().default('PRD'),
+  serial_suffix: z.string().optional().default(''),
+  whatsapp_enabled: z.boolean().default(true),
+  whatsapp_number: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -24,57 +27,67 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = simpleSignupSchema.parse(body);
 
-    const existingUser = await UserAccount.findOne({ email: validated.email });
+    // Check if email already exists in user_accounts
+    const existingUser = await UserAccount.findOne({ email: validated.email.toLowerCase() });
     if (existingUser) {
       return NextResponse.json({
-        error: 'User already exists. Please login instead.',
+        error: 'Email already exists. Please login instead.',
       }, { status: 400 });
     }
 
     const password_hash = await hashPassword(validated.password);
 
-    // Create user account
-    const user = await UserAccount.create({
+    // Step 1: Create user account (main account)
+    const userAccount = await UserAccount.create({
       full_name: validated.full_name,
-      email: validated.email,
+      email: validated.email.toLowerCase(),
       phone: validated.phone,
       password_hash,
       business_name: validated.store_name,
     });
 
-    // Create store
+    // Step 2: Create store with owner_user_id pointing to user_account
     const store = await Store.create({
       store_name: validated.store_name,
       address: validated.store_address,
       contact_phone: validated.store_phone,
       serial_prefix: validated.serial_prefix,
-      owner_user_id: user._id,
+      serial_suffix: validated.serial_suffix || '',
+      whatsapp_enabled: validated.whatsapp_enabled ?? true,
+      whatsapp_number: validated.whatsapp_number || validated.store_phone,
+      owner_user_id: userAccount._id,
       serial_counter: 1,
     });
 
-    // Create store user with admin role
-    await StoreUser.create({
+    // Step 3: Create store user (admin) linked to user_account
+    const storeUser = await StoreUser.create({
       store_id: store._id,
-      user_id: user._id,
+      user_account_id: userAccount._id,
+      full_name: validated.full_name,
+      email: validated.email.toLowerCase(),
+      phone: validated.phone,
+      password_hash,
       role: 'admin',
       permissions: ['all'],
     });
 
-    const token = generateToken(user._id.toString());
+    // Generate token with user_account ID (for user_account login)
+    const token = generateToken(userAccount._id.toString());
 
     return NextResponse.json({
       token,
       user: {
-        id: user._id,
-        email: user.email,
-        full_name: user.full_name,
-        phone: user.phone,
-        business_name: user.business_name,
+        id: userAccount._id,
+        email: userAccount.email,
+        full_name: userAccount.full_name,
+        phone: userAccount.phone,
+        business_name: userAccount.business_name,
       },
       store: {
         id: store._id,
         store_name: store.store_name,
       },
+      accountType: 'user_account',
     }, { status: 201 });
 
   } catch (error: any) {

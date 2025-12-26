@@ -1,20 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
+import { StoreUser } from '@/models/StoreUser';
 import { UserAccount } from '@/models/UserAccount';
-import { getAuthenticatedUserId } from '@/lib/auth-helpers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const userId = getAuthenticatedUserId(req);
+    const authContext = await getAuthenticatedUser(req);
 
-    const user = await UserAccount.findById(userId).select('-password_hash');
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (authContext.accountType === 'store_user') {
+      // Store user (employee)
+      const storeUser = authContext.storeUser;
+      return NextResponse.json({ 
+        user: {
+          _id: storeUser._id,
+          full_name: storeUser.full_name,
+          email: storeUser.email,
+          phone: storeUser.phone,
+          role: storeUser.role,
+          permissions: storeUser.permissions,
+          store_id: storeUser.store_id,
+        },
+        storeUser,
+        accountType: 'store_user',
+      });
+    } else {
+      // User account (store owner/admin)
+      const userAccount = authContext.userAccount;
+      const storeUser = authContext.storeUser;
+      
+      return NextResponse.json({ 
+        user: {
+          _id: userAccount._id,
+          full_name: userAccount.full_name,
+          email: userAccount.email,
+          phone: userAccount.phone,
+          business_name: userAccount.business_name,
+        },
+        storeUser: storeUser ? {
+          _id: storeUser._id,
+          store_id: storeUser.store_id,
+          role: storeUser.role,
+          permissions: storeUser.permissions,
+        } : null,
+        accountType: 'user_account',
+      });
     }
-
-    return NextResponse.json({ user });
   } catch (error: any) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
       return NextResponse.json({ error: error.message }, { status: 401 });

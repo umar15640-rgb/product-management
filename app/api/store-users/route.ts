@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { StoreUser } from '@/models/StoreUser';
-import { UserAccount } from '@/models/UserAccount';
 import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
 const storeUserSchema = z.object({
   store_id: z.string(),
-  user_id: z.string().optional(),
-  
-  // New User Details
-  full_name: z.string().optional(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  password: z.string().optional(),
-  
+  full_name: z.string(),
+  email: z.string().email(),
+  phone: z.string(),
+  password: z.string().min(6),
   role: z.enum(['admin', 'manager', 'staff']),
   permissions: z.array(z.string()).default([]),
 });
@@ -23,29 +18,32 @@ async function getHandler(req: NextRequest) {
   try {
     await connectDB();
     
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
     
     const { searchParams } = new URL(req.url);
-    const storeId = searchParams.get('store_id');
+    const storeId = searchParams.get('store_id') || await getAuthenticatedStoreId(req);
 
     if (!storeId) {
         return NextResponse.json({ error: 'store_id is required' }, { status: 400 });
     }
 
     // Verify user has access to this store
-    const storeUser = await StoreUser.findOne({
-      store_id: storeId,
-      user_id: userId,
-    });
-
-    if (!storeUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (authContext.accountType === 'store_user') {
+      if (authContext.storeId !== storeId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+    } else {
+      // User account - verify they own the store or have a store user in it
+      if (authContext.storeId !== storeId && !authContext.storeUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
+    // Only return store users from the same store
     const storeUsers = await StoreUser.find({ store_id: storeId })
-      .populate('user_id', 'full_name email phone')
       .populate('store_id', 'store_name')
+      .select('-password_hash')
       .sort({ created_at: -1 });
 
     return NextResponse.json({ storeUsers });
@@ -61,71 +59,69 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
 
     const body = await req.json();
     const validated = storeUserSchema.parse(body);
 
     // Verify that the current user is an admin of the store
-    const adminStoreUser = await StoreUser.findOne({
-      store_id: validated.store_id,
-      user_id: userId,
-      role: 'admin',
-    });
+    const storeId = await getAuthenticatedStoreId(req);
+    
+    if (storeId !== validated.store_id) {
+      return NextResponse.json(
+        { error: 'Unauthorized access to this store' },
+        { status: 403 }
+      );
+    }
 
-    if (!adminStoreUser) {
+    // Get the store user for permission check
+    let currentStoreUser;
+    if (authContext.accountType === 'store_user') {
+      currentStoreUser = authContext.storeUser;
+    } else {
+      // User account - get their store user in this store
+      currentStoreUser = await StoreUser.findOne({
+        user_account_id: authContext.userId,
+        store_id: storeId,
+      });
+    }
+
+    if (!currentStoreUser || currentStoreUser.role !== 'admin') {
       return NextResponse.json(
         { error: 'Only admin users can create store users' },
         { status: 403 }
       );
     }
 
-    let targetUserId = validated.user_id;
-
-    // Handle creation of new user or finding existing by email
-    if (!targetUserId) {
-      if (!validated.email || !validated.password || !validated.full_name) {
-        return NextResponse.json(
-          { error: 'If user_id is not provided; email, password, and name are required.' },
-          { status: 400 }
-        );
-      }
-
-      const existingUser = await UserAccount.findOne({ email: validated.email });
-
-      if (existingUser) {
-        targetUserId = existingUser._id.toString();
-      } else {
-        const password_hash = await hashPassword(validated.password);
-        const newUser = await UserAccount.create({
-          full_name: validated.full_name,
-          email: validated.email,
-          phone: validated.phone || '',
-          password_hash,
-        });
-        targetUserId = newUser._id.toString();
-      }
-    }
-
-    // Check if user is already in store
-    const existingLink = await StoreUser.findOne({
+    // Check if email is already used in this store
+    const existingStoreUser = await StoreUser.findOne({
       store_id: validated.store_id,
-      user_id: targetUserId,
+      email: validated.email.toLowerCase(),
     });
 
-    if (existingLink) {
-      return NextResponse.json({ error: 'User is already a member of this store' }, { status: 400 });
+    if (existingStoreUser) {
+      return NextResponse.json({ error: 'Email is already registered in this store' }, { status: 400 });
     }
+
+    // Hash password and create store user
+    const password_hash = await hashPassword(validated.password);
 
     const storeUser = await StoreUser.create({
       store_id: validated.store_id,
-      user_id: targetUserId,
+      full_name: validated.full_name,
+      email: validated.email.toLowerCase(),
+      phone: validated.phone,
+      password_hash,
       role: validated.role,
-      permissions: validated.permissions,
+      permissions: validated.permissions || [],
     });
 
-    return NextResponse.json({ storeUser }, { status: 201 });
+    // Return store user without password hash
+    const storeUserResponse = storeUser.toObject();
+    delete storeUserResponse.password_hash;
+
+    return NextResponse.json({ storeUser: storeUserResponse }, { status: 201 });
 
   } catch (error: any) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {

@@ -45,10 +45,9 @@ export const storeSchema = z.object({
 });
 
 export const customerSchema = z.object({
-  store_id: z.string(),
-  customer_name: z.string().min(1),
-  phone: z.string().min(10),
-  email: z.string().email().optional(),
+  customer_name: z.string().min(1, "Customer name is required"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  email: z.string().email("Invalid email address").optional().or(z.literal('')),
   address: z.string().optional(),
   gst_number: z.string().optional(),
 });

@@ -18,8 +18,8 @@ export default function CustomersPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    store_id: '',
     customer_name: '',
+    phone_country_code: '+91',
     phone: '',
     email: '',
     address: '',
@@ -55,11 +55,7 @@ export default function CustomersPage() {
     setError('');
     setLoading(true);
     
-    if (!formData.store_id) {
-      setError('Please select a store');
-      setLoading(false);
-      return;
-    }
+    // Validation
     if (!formData.customer_name.trim()) {
       setError('Customer name is required');
       setLoading(false);
@@ -70,7 +66,7 @@ export default function CustomersPage() {
       setLoading(false);
       return;
     }
-    if (formData.email && !formData.email.includes('@')) {
+    if (formData.email && formData.email.trim() && !formData.email.includes('@')) {
       setError('Invalid email address');
       setLoading(false);
       return;
@@ -79,13 +75,21 @@ export default function CustomersPage() {
     const token = localStorage.getItem('token');
     
     try {
+      // Combine country code with phone number
+      const fullPhone = `${formData.phone_country_code}${formData.phone}`;
+      
+      // Don't send store_id - it's automatically determined from authenticated user context
+      const { phone_country_code, ...customerData } = formData;
       const res = await fetch('/api/customers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...customerData,
+          phone: fullPhone,
+        }),
       });
 
       const data = await res.json();
@@ -96,8 +100,8 @@ export default function CustomersPage() {
       setIsModalOpen(false);
       fetchCustomers();
       setFormData({
-        store_id: '',
         customer_name: '',
+        phone_country_code: '+91',
         phone: '',
         email: '',
         address: '',
@@ -174,24 +178,6 @@ export default function CustomersPage() {
                 {error}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Store <span className="text-danger-600">*</span>
-              </label>
-              <select
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-                value={formData.store_id}
-                onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
-                required
-              >
-                <option value="">Select a store</option>
-                {stores.map((store) => (
-                  <option key={store._id} value={store._id}>
-                    {store.store_name}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <Input
               label="Customer Name"
@@ -201,16 +187,38 @@ export default function CustomersPage() {
               required
             />
 
-            <Input
-              label="Phone"
-              placeholder="+1 (555) 123-4567"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Phone <span className="text-red-500">*</span></label>
+              <div className="flex gap-2">
+                <select
+                  className="w-32 px-3 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500"
+                  value={formData.phone_country_code}
+                  onChange={(e) => setFormData({ ...formData, phone_country_code: e.target.value })}
+                >
+                  <option value="+91">🇮🇳 +91 (India)</option>
+                  <option value="+1">🇺🇸 +1 (USA)</option>
+                  <option value="+44">🇬🇧 +44 (UK)</option>
+                  <option value="+86">🇨🇳 +86 (China)</option>
+                  <option value="+971">🇦🇪 +971 (UAE)</option>
+                  <option value="+65">🇸🇬 +65 (Singapore)</option>
+                  <option value="+61">🇦🇺 +61 (Australia)</option>
+                  <option value="+33">🇫🇷 +33 (France)</option>
+                  <option value="+49">🇩🇪 +49 (Germany)</option>
+                  <option value="+81">🇯🇵 +81 (Japan)</option>
+                </select>
+                <input
+                  type="tel"
+                  placeholder="9876543210"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                  className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                  required
+                />
+              </div>
+            </div>
 
             <Input
-              label="Email"
+              label="Email (Optional)"
               type="email"
               placeholder="john@example.com"
               value={formData.email}

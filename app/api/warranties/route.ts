@@ -14,14 +14,17 @@ import { whatsappClient } from '@/lib/whatsapp-client';
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
+    const { getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    // Enforce data isolation - only show warranties from the authenticated user's store
+    const storeId = await getAuthenticatedStoreId(req);
+    
     const { searchParams } = new URL(req.url);
-    const storeId = searchParams.get('storeId');
-    const userId = searchParams.get('userId'); // Support filtering by user
+    const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = {};
-    if (storeId) query.store_id = storeId;
+    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
     if (userId) query.user_id = userId;
 
     const warranties = await Warranty.find(query)
@@ -35,6 +38,9 @@ async function getHandler(req: NextRequest) {
 
     return NextResponse.json({ warranties, total, page, pages: Math.ceil(total / limit) });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -49,8 +55,13 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
     }
 
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    const authContext = await getAuthenticatedUser(req);
+    const storeId = await getAuthenticatedStoreId(req);
+    const userId = authContext.accountType === 'store_user' 
+      ? authContext.userId 
+      : (authContext.storeUser?._id?.toString() || authContext.userId);
 
     const body = await req.json();
     const validated = warrantySchema.parse(body);
@@ -97,10 +108,15 @@ async function postHandler(req: NextRequest) {
       warranty_end: warranty_end.toLocaleDateString(),
     });
 
+    // Verify product belongs to authenticated user's store
+    if (product.store_id.toString() !== storeId) {
+      return NextResponse.json({ error: 'Product does not belong to your store' }, { status: 403 });
+    }
+
     const warranty = await Warranty.create({
       product_id: validated.product_id,
       customer_id: validated.customer_id,
-      store_id: product.store_id,
+      store_id: storeId,
       user_id: userId, 
       warranty_start,
       warranty_end,
@@ -110,8 +126,8 @@ async function postHandler(req: NextRequest) {
     });
 
     await logAudit({
-      userId: userId, // FIXED
-      storeId: product.store_id,
+      userId: userId,
+      storeId: storeId,
       entity: 'warranties',
       entityId: warranty._id,
       action: 'create',

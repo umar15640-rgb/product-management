@@ -27,6 +27,31 @@ export default function StoreUsersPage() {
     permissions: [] as string[],
   });
 
+  const availablePermissions = [
+    { id: 'view_customers', label: 'View Customers' },
+    { id: 'view_products', label: 'View Products' },
+    { id: 'view_warranties', label: 'View Warranties' },
+    { id: 'view_claims', label: 'View Claims' },
+    { id: 'manage_users', label: 'Manage Store Users' },
+    { id: 'manage_settings', label: 'Manage Settings' },
+    { id: 'view_audit_logs', label: 'View Audit Logs' },
+    { id: 'manage_whatsapp', label: 'Manage WhatsApp' },
+  ];
+
+  const togglePermission = (permissionId: string) => {
+    if (formData.permissions.includes(permissionId)) {
+      setFormData({
+        ...formData,
+        permissions: formData.permissions.filter(p => p !== permissionId),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        permissions: [...formData.permissions, permissionId],
+      });
+    }
+  };
+
   useEffect(() => {
     if (currentStore?._id) {
         fetchStoreUsers();
@@ -136,6 +161,7 @@ export default function StoreUsersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Permissions</TableHead>
                     <TableHead>Joined</TableHead>
                 </TableRow>
                 </TableHeader>
@@ -145,18 +171,38 @@ export default function StoreUsersPage() {
                     <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center text-xs font-bold text-neutral-600">
-                                {storeUser.user_id?.full_name?.charAt(0)}
+                                {storeUser.full_name?.charAt(0) || 'U'}
                             </div>
-                            {storeUser.user_id?.full_name}
+                            {storeUser.full_name}
                         </div>
                     </TableCell>
                     <TableCell>
                         <div className="flex flex-col">
-                            <span className="text-sm">{storeUser.user_id?.email}</span>
-                            <span className="text-xs text-neutral-500">{storeUser.user_id?.phone}</span>
+                            <span className="text-sm">{storeUser.email}</span>
+                            <span className="text-xs text-neutral-500">{storeUser.phone}</span>
                         </div>
                     </TableCell>
                     <TableCell>{getRoleBadge(storeUser.role)}</TableCell>
+                    <TableCell>
+                      {storeUser.role === 'admin' ? (
+                        <Badge variant="default">All Permissions</Badge>
+                      ) : storeUser.permissions && storeUser.permissions.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {storeUser.permissions.slice(0, 3).map((perm: string) => (
+                            <Badge key={perm} variant="success" className="text-xs">
+                              {perm.replace('_', ' ')}
+                            </Badge>
+                          ))}
+                          {storeUser.permissions.length > 3 && (
+                            <Badge variant="default" className="text-xs">
+                              +{storeUser.permissions.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-neutral-400">No permissions</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-neutral-600">{new Date(storeUser.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                 ))}
@@ -210,13 +256,43 @@ export default function StoreUsersPage() {
               <select
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900"
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) => {
+                  const newRole = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    role: newRole,
+                    // Admin gets all permissions automatically
+                    permissions: newRole === 'admin' ? ['all'] : formData.permissions.filter(p => p !== 'all')
+                  });
+                }}
               >
                 <option value="staff">Staff</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
+
+            {formData.role !== 'admin' && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-3">Permissions</label>
+                <div className="grid grid-cols-2 gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200 max-h-64 overflow-y-auto">
+                  {availablePermissions.map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.permissions.includes(perm.id)}
+                        onChange={() => togglePermission(perm.id)}
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-neutral-700">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Select the modules this user can access
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>

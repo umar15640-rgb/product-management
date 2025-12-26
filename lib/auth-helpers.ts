@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getUserIdFromToken } from './auth';
 import { connectDB } from './db';
 import { StoreUser } from '@/models/StoreUser';
+import { UserAccount } from '@/models/UserAccount';
 
 export interface AuthContext {
   userId: string;
+  accountType: 'user_account' | 'store_user';
   storeId?: string;
   storeUser?: any;
+  userAccount?: any;
 }
 
 /**
@@ -22,6 +25,7 @@ export function getAuthToken(req: NextRequest): string | null {
 
 /**
  * Gets authenticated user ID from request
+ * Returns the raw ID (may be prefixed with "store_user_" for store users)
  */
 export function getAuthenticatedUserId(req: NextRequest): string {
   const token = getAuthToken(req);
@@ -33,6 +37,82 @@ export function getAuthenticatedUserId(req: NextRequest): string {
   } catch (error: any) {
     throw new Error('Invalid or expired token');
   }
+}
+
+/**
+ * Gets authenticated user context (handles both user_accounts and store_users)
+ */
+export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContext> {
+  const token = getAuthToken(req);
+  if (!token) {
+    throw new Error('Missing authorization token');
+  }
+  
+  try {
+    const userId = getUserIdFromToken(token);
+    
+    // Check if it's a store_user token (prefixed with "store_user_")
+    if (userId.startsWith('store_user_')) {
+      const storeUserId = userId.replace('store_user_', '');
+      await connectDB();
+      const storeUser = await StoreUser.findById(storeUserId).populate('store_id');
+      
+      if (!storeUser) {
+        throw new Error('Store user not found');
+      }
+      
+      return {
+        userId: storeUserId,
+        accountType: 'store_user',
+        storeId: storeUser.store_id.toString(),
+        storeUser,
+      };
+    } else {
+      // It's a user_account token
+      await connectDB();
+      const userAccount = await UserAccount.findById(userId);
+      
+      if (!userAccount) {
+        throw new Error('User account not found');
+      }
+      
+      // Try to find their store user (if they have a store)
+      // Get the current store from query params or use the first one
+      const { searchParams } = new URL(req.url);
+      const storeIdParam = searchParams.get('storeId') || searchParams.get('store_id');
+      
+      let storeUser;
+      if (storeIdParam) {
+        storeUser = await StoreUser.findOne({ 
+          user_account_id: userId,
+          store_id: storeIdParam 
+        }).populate('store_id');
+      } else {
+        storeUser = await StoreUser.findOne({ user_account_id: userId }).populate('store_id');
+      }
+      
+      return {
+        userId,
+        accountType: 'user_account',
+        userAccount,
+        storeUser: storeUser || undefined,
+        storeId: storeUser?.store_id?.toString() || storeIdParam || undefined,
+      };
+    }
+  } catch (error: any) {
+    throw new Error('Invalid or expired token');
+  }
+}
+
+/**
+ * Gets the store ID from authenticated user (works for both account types)
+ */
+export async function getAuthenticatedStoreId(req: NextRequest): Promise<string> {
+  const authContext = await getAuthenticatedUser(req);
+  if (!authContext.storeId) {
+    throw new Error('No store access available');
+  }
+  return authContext.storeId;
 }
 
 /**

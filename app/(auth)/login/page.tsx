@@ -44,23 +44,27 @@ export default function LoginPage() {
         }
   
         localStorage.setItem('token', data.token);
-        localStorage.setItem('userId', data.user.id);
+        
+        if (data.accountType === 'user_account') {
+          localStorage.setItem('userId', data.user.id);
+          if (data.store) {
+            localStorage.setItem('currentStoreId', data.store._id || data.store);
+          }
+          if (data.needsStore) {
+            router.push('/setup-store');
+            return;
+          }
+        } else {
+          localStorage.setItem('storeUserId', data.storeUser.id);
+          if (data.store) {
+            localStorage.setItem('currentStoreId', data.store._id || data.store);
+          }
+        }
+        
         document.cookie = `token=${data.token}; path=/; max-age=604800`;
         
-        const storesRes = await fetch('/api/stores', {
-          headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        const storesData = await storesRes.json();
-        
-        if (!storesRes.ok) {
-          throw new Error(storesData.error || 'Failed to fetch stores');
-        }
-        
-        if (!storesData.stores || storesData.stores.length === 0) {
-          router.push('/setup-store');
-        } else {
-          router.push('/dashboard');
-        }
+        // Redirect to dashboard
+        router.push('/dashboard');
       } catch (err: any) {
         setError(err.message);
       } finally {

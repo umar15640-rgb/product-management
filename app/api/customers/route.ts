@@ -7,15 +7,19 @@ import { logAudit } from '@/lib/audit-logger';
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
+    const { getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    // Enforce data isolation - only show customers from the authenticated user's store
+    const storeId = await getAuthenticatedStoreId(req);
+    
     const { searchParams } = new URL(req.url);
-    const storeId = searchParams.get('storeId');
     const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = {};
-    if (storeId) query.store_id = storeId;
+    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
     if (userId) query.user_id = userId;
+    
     const customers = await Customer.find(query)
       .skip((page - 1) * limit)
       .limit(limit)
@@ -25,6 +29,9 @@ async function getHandler(req: NextRequest) {
 
     return NextResponse.json({ customers, total, page, pages: Math.ceil(total / limit) });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -32,26 +39,28 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
-    }
-
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    const authContext = await getAuthenticatedUser(req);
+    const storeId = await getAuthenticatedStoreId(req);
+    const userId = authContext.accountType === 'store_user' 
+      ? authContext.userId 
+      : (authContext.storeUser?._id?.toString() || authContext.userId);
 
     const body = await req.json();
-    const validated = customerSchema.parse(body);
+    // Remove store_id from body if present (we override it)
+    const { store_id, ...bodyWithoutStoreId } = body;
+    const validated = { ...customerSchema.parse(bodyWithoutStoreId), store_id: storeId }; // Override store_id
 
     const customer = await Customer.create({
       ...validated,
       user_id: userId,
+      store_id: storeId,
     });
 
     await logAudit({
-      userId,
-      storeId: validated.store_id,
+      userId: userId,
+      storeId: storeId,
       entity: 'customers',
       entityId: customer._id,
       action: 'create',
@@ -60,6 +69,9 @@ async function postHandler(req: NextRequest) {
 
     return NextResponse.json({ customer }, { status: 201 });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

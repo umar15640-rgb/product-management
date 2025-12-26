@@ -8,15 +8,18 @@ import { logAudit } from '@/lib/audit-logger';
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
+    const { getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    // Enforce data isolation - only show products from the authenticated user's store
+    const storeId = await getAuthenticatedStoreId(req);
+    
     const { searchParams } = new URL(req.url);
-    const storeId = searchParams.get('storeId');
-    const userId = searchParams.get('userId'); // New param
+    const userId = searchParams.get('userId'); // Optional filter by user
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = {};
-    if (storeId) query.store_id = storeId;
-    if (userId) query.user_id = userId; // Filter by user
+    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
+    if (userId) query.user_id = userId;
 
     const products = await Product.find(query)
       .skip((page - 1) * limit)
@@ -27,6 +30,9 @@ async function getHandler(req: NextRequest) {
 
     return NextResponse.json({ products, total, page, pages: Math.ceil(total / limit) });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -34,33 +40,30 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   try {
     await connectDB();
-    // ... Auth logic ...
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
-    }
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    const authContext = await getAuthenticatedUser(req);
+    const storeId = await getAuthenticatedStoreId(req);
+    const userId = authContext.accountType === 'store_user' 
+      ? authContext.userId 
+      : (authContext.storeUser?._id?.toString() || authContext.userId);
 
     const body = await req.json();
-    // Assuming you updated validation schema, or map it manually here if schema isn't updated
-    // const validated = productSchema.parse(body); 
+    const validated = { ...body, store_id: storeId }; // Override store_id with authenticated user's store
     
-    // Manual mapping if validation fails due to schema name change
-    const validated = { ...body }; 
-    
-    const serialData = await generateSerialNumber(validated.store_id);
+    const serialData = await generateSerialNumber(storeId);
 
     const product = await Product.create({
       ...validated,
       ...serialData,
       user_id: userId,
-      manufacturing_date: new Date(validated.manufacturing_date), // Changed
+      store_id: storeId,
+      manufacturing_date: new Date(validated.manufacturing_date),
     });
 
     await logAudit({
-      userId,
-      storeId: validated.store_id,
+      userId: userId,
+      storeId: storeId,
       entity: 'products',
       entityId: product._id,
       action: 'create',
@@ -69,6 +72,9 @@ async function postHandler(req: NextRequest) {
 
     return NextResponse.json({ product }, { status: 201 });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

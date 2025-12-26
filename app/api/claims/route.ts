@@ -8,16 +8,17 @@ import { logAudit } from '@/lib/audit-logger';
 async function getHandler(req: NextRequest) {
   try {
     await connectDB();
+    const { getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    // Enforce data isolation - only show claims from the authenticated user's store
+    const storeId = await getAuthenticatedStoreId(req);
+    
     const { searchParams } = new URL(req.url);
-    const storeId = searchParams.get('storeId');
-    const userId = searchParams.get('userId'); 
+    const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = storeId ? { store_id: storeId } : {};
-    
-    // Optional: Filter claims related to warranties owned by this user
-    // This requires a more complex query or assumed permission scope
+    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
     
     const claims = await Claim.find(query)
       .populate({
@@ -32,6 +33,9 @@ async function getHandler(req: NextRequest) {
 
     return NextResponse.json({ claims, total, page, pages: Math.ceil(total / limit) });
   } catch (error: any) {
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -46,8 +50,13 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'Missing authorization' }, { status: 401 });
     }
 
-    const { getAuthenticatedUserId } = await import('@/lib/auth-helpers');
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    
+    const authContext = await getAuthenticatedUser(req);
+    const storeId = await getAuthenticatedStoreId(req);
+    const userId = authContext.accountType === 'store_user' 
+      ? authContext.userId 
+      : (authContext.storeUser?._id?.toString() || authContext.userId);
 
     const body = await req.json();
     const validated = claimSchema.parse(body);
@@ -57,14 +66,19 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'Warranty not found' }, { status: 404 });
     }
 
+    // Verify warranty belongs to authenticated user's store
+    if (warranty.store_id.toString() !== storeId) {
+      return NextResponse.json({ error: 'Warranty does not belong to your store' }, { status: 403 });
+    }
+
     const claim = await Claim.create({
       ...validated,
-      store_id: warranty.store_id,
+      store_id: storeId,
       timeline_events: [
         {
           timestamp: new Date(),
           action: 'Claim created',
-          user_id: userId, // FIXED: Use actual userId
+          user_id: userId,
         },
       ],
     });
@@ -72,8 +86,8 @@ async function postHandler(req: NextRequest) {
     await Warranty.findByIdAndUpdate(validated.warranty_id, { status: 'claimed' });
 
     await logAudit({
-      userId: userId, // FIXED
-      storeId: warranty.store_id,
+      userId: userId,
+      storeId: storeId,
       entity: 'claims',
       entityId: claim._id,
       action: 'create',
