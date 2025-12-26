@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useStore } from '@/context/store-context';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LuPencil, LuKey, LuTrash2 } from 'react-icons/lu';
+import { PhoneInputField } from '@/components/ui/PhoneInputField';
+import { showToast } from '@/components/ui/Toast';
+import { showConfirm } from '@/components/ui/ConfirmDialog';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,8 +23,11 @@ export default function SettingsPage() {
   
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isEditApiKeyModalOpen, setIsEditApiKeyModalOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingApiKey, setEditingApiKey] = useState<any>(null);
+  const [editApiKeyData, setEditApiKeyData] = useState({ status: 'Enabled' });
   
   const [storeFormData, setStoreFormData] = useState({
     store_name: '',
@@ -88,9 +94,10 @@ export default function SettingsPage() {
 
       setIsStoreModalOpen(false);
       refreshContext();
+      showToast('Store settings updated successfully', 'success');
     } catch (error: any) {
       console.error('Error updating store:', error);
-      alert(error.message);
+      showToast(error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -132,35 +139,80 @@ export default function SettingsPage() {
       setIsApiKeyModalOpen(false);
       fetchApiKeys();
       
-      // Show API key to user (this is the only time they'll see it)
-      alert(`API Key created! Your API Key is: ${data.apiKey._id}\n\nPlease save this key securely. You won't be able to see it again.`);
+      showToast(`API Key created: ${data.apiKey._id}. Save it securely!`, 'success');
     } catch (error: any) {
       console.error('Error creating API key:', error);
-      alert(error.message);
+      showToast(error.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteApiKey = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this API key?')) return;
+    showConfirm(
+      'Delete API Key',
+      'This action cannot be undone. The API key will be permanently deleted.',
+      async () => {
+        const token = localStorage.getItem('token');
+        try {
+          const res = await fetch(`/api/api-keys/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to delete API key');
+          }
+
+          fetchApiKeys();
+          showToast('API key deleted successfully', 'success');
+        } catch (error: any) {
+          console.error('Error deleting API key:', error);
+          showToast(error.message, 'error');
+        }
+      },
+      { isDangerous: true, confirmText: 'Delete', cancelText: 'Cancel' }
+    );
+  };
+
+  const handleEditApiKey = (apiKey: any) => {
+    setEditingApiKey(apiKey);
+    setEditApiKeyData({ status: apiKey.status });
+    setIsEditApiKeyModalOpen(true);
+  };
+
+  const handleUpdateApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingApiKey) return;
+
+    setLoading(true);
     const token = localStorage.getItem('token');
+    
     try {
-      const res = await fetch(`/api/api-keys/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`/api/api-keys/${editingApiKey._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editApiKeyData),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to delete API key');
+        throw new Error(errorData.error || 'Failed to update API key');
       }
 
+      setIsEditApiKeyModalOpen(false);
+      setEditingApiKey(null);
       fetchApiKeys();
+      showToast('API key updated successfully', 'success');
     } catch (error: any) {
-      console.error('Error deleting API key:', error);
-      alert(error.message);
+      console.error('Error updating API key:', error);
+      showToast(error.message, 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -261,26 +313,23 @@ export default function SettingsPage() {
 
         {/* API Keys Tab */}
         {activeTab === 'api-keys' && (
-          <div className="space-y-6">
-            {!isAdmin && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-yellow-800 text-sm">Only admin users can manage API keys.</p>
-              </div>
-            )}
-
-            {isAdmin && (
-              <div className="flex justify-end">
-                <Button onClick={() => setIsApiKeyModalOpen(true)}>
-                  <LuKey className="w-4 h-4 mr-2" />
-                  Create API Key
-                </Button>
-              </div>
-            )}
-
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
                 <CardTitle>API Keys</CardTitle>
-              </CardHeader>
+                {isAdmin && (
+                  <Button onClick={() => setIsApiKeyModalOpen(true)}>
+                    <LuKey className="w-4 h-4 mr-2" />
+                    Create API Key
+                  </Button>
+                )}
+              </div>
+              {!isAdmin && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                  <p className="text-yellow-800 text-sm">Only admin users can manage API keys.</p>
+                </div>
+              )}
+            </CardHeader>
               <CardContent>
                 {apiKeys.length === 0 ? (
                   <div className="text-center py-12">
@@ -325,14 +374,24 @@ export default function SettingsPage() {
                           </TableCell>
                           {isAdmin && (
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteApiKey(apiKey._id)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <LuTrash2 className="w-4 h-4" />
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditApiKey(apiKey)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  <LuPencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteApiKey(apiKey._id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <LuTrash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -342,7 +401,6 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
-          </div>
         )}
 
         {/* Store Edit Modal */}
@@ -364,10 +422,10 @@ export default function SettingsPage() {
               value={storeFormData.address}
               onChange={(e) => setStoreFormData({ ...storeFormData, address: e.target.value })}
             />
-            <Input
+            <PhoneInputField
               label="Contact Phone"
               value={storeFormData.contact_phone}
-              onChange={(e) => setStoreFormData({ ...storeFormData, contact_phone: e.target.value })}
+              onChange={(phone) => setStoreFormData({ ...storeFormData, contact_phone: phone })}
             />
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -395,10 +453,10 @@ export default function SettingsPage() {
               </label>
             </div>
             {storeFormData.whatsapp_enabled && (
-              <Input
+              <PhoneInputField
                 label="WhatsApp Number"
                 value={storeFormData.whatsapp_number}
-                onChange={(e) => setStoreFormData({ ...storeFormData, whatsapp_number: e.target.value })}
+                onChange={(phone) => setStoreFormData({ ...storeFormData, whatsapp_number: phone })}
               />
             )}
             <div className="flex justify-end gap-3 pt-4">
@@ -442,6 +500,36 @@ export default function SettingsPage() {
               </Button>
               <Button type="submit" loading={loading}>
                 Create API Key
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* API Key Edit Modal */}
+        <Modal
+          isOpen={isEditApiKeyModalOpen}
+          onClose={() => setIsEditApiKeyModalOpen(false)}
+          title="Edit API Key"
+          size="md"
+        >
+          <form onSubmit={handleUpdateApiKey} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Status</label>
+              <select
+                value={editApiKeyData.status}
+                onChange={(e) => setEditApiKeyData({ ...editApiKeyData, status: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900"
+              >
+                <option value="Enabled">Enabled</option>
+                <option value="Disabled">Disabled</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsEditApiKeyModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={loading}>
+                Update API Key
               </Button>
             </div>
           </form>

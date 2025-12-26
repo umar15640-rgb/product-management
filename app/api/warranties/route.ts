@@ -10,6 +10,7 @@ import { generateWarrantyPDF } from '@/lib/pdf-generator';
 import { calculateWarrantyEnd } from '@/lib/utils';
 import { logAudit } from '@/lib/audit-logger';
 import { whatsappClient } from '@/lib/whatsapp-client';
+import { z } from 'zod';
 
 async function getHandler(req: NextRequest) {
   try {
@@ -18,9 +19,7 @@ async function getHandler(req: NextRequest) {
     
     // Enforce data isolation - only show warranties from the authenticated user's store
     const storeId = await getAuthenticatedStoreId(req);
-    
-    // Ensure storeId is a string
-    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    const storeIdString = String(storeId);
     
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
@@ -65,8 +64,7 @@ async function postHandler(req: NextRequest) {
     
     const authContext = await getAuthenticatedUser(req);
     const storeId = await getAuthenticatedStoreId(req);
-    // Ensure storeId is a string
-    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    const storeIdString = String(storeId);
     const userId = authContext.accountType === 'store_user' 
       ? authContext.userId 
       : (authContext.storeUser?._id?.toString() || authContext.userId);
@@ -155,6 +153,12 @@ async function postHandler(req: NextRequest) {
 
     return NextResponse.json({ warranty }, { status: 201 });
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+    }
+    if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

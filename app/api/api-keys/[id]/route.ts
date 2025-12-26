@@ -11,13 +11,14 @@ const updateApiKeySchema = z.object({
   expired_at: z.string().optional(),
 });
 
-async function getHandler(req: NextRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     
     const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
     const authContext = await getAuthenticatedUser(req);
-    const apiKey = await ApiKeyManagement.findById(params.id);
+    const { id } = await params;
+    const apiKey = await ApiKeyManagement.findById(id);
 
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not found' }, { status: 404 });
@@ -50,16 +51,17 @@ async function getHandler(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-async function putHandler(req: NextRequest, { params }: { params: { id: string } }) {
+async function putHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
 
     const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
     const authContext = await getAuthenticatedUser(req);
+    const { id } = await params;
     const body = await req.json();
     const validated = updateApiKeySchema.parse(body);
 
-    const apiKey = await ApiKeyManagement.findById(params.id);
+    const apiKey = await ApiKeyManagement.findById(id);
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not found' }, { status: 404 });
     }
@@ -91,7 +93,7 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
     }
 
     const updatedApiKey = await ApiKeyManagement.findByIdAndUpdate(
-      params.id,
+      id,
       updateData,
       { new: true }
     );
@@ -108,14 +110,15 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-async function deleteHandler(req: NextRequest, { params }: { params: { id: string } }) {
+async function deleteHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
 
     const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
     const authContext = await getAuthenticatedUser(req);
+    const { id } = await params;
 
-    const apiKey = await ApiKeyManagement.findById(params.id);
+    const apiKey = await ApiKeyManagement.findById(id);
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not found' }, { status: 404 });
     }
@@ -139,7 +142,7 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
       }
     }
 
-    await ApiKeyManagement.findByIdAndDelete(params.id);
+    await ApiKeyManagement.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'API key deleted successfully' });
   } catch (error: any) {

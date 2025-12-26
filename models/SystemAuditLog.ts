@@ -3,7 +3,7 @@ import { ISystemAuditLog } from '@/types';
 
 const SystemAuditLogSchema = new Schema<ISystemAuditLog>(
   {
-    user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts' },
+    user_id: { type: Schema.Types.ObjectId },
     store_id: { type: Schema.Types.ObjectId, ref: 'stores' },
     entity: { type: String, required: true },
     entity_id: { type: Schema.Types.ObjectId, required: true },

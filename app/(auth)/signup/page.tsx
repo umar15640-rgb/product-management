@@ -7,20 +7,20 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { LuArrowRight } from 'react-icons/lu';
+import { PhoneInputField } from '@/components/ui/PhoneInputField';
+import { showToast } from '@/components/ui/Toast';
 
 export default function SignupPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
-    phone_country_code: '+91',
     phone: '',
     password: '',
     store_name: '',
     store_address: '',
-    store_phone_country_code: '+91',
     store_phone: '',
-    serial_prefix: 'PRD',
+    serial_prefix: '',
     serial_suffix: '',
     whatsapp_enabled: true,
     whatsapp_number: '',
@@ -43,17 +43,11 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
-    const fullPhone = `${formData.phone_country_code}${formData.phone}`;
-    if (!formData.phone.trim() || formData.phone.length < 10) {
+    if (!formData.phone || formData.phone.length < 10) {
       setError('Phone number must be at least 10 digits');
       setLoading(false);
       return;
     }
-    
-    const fullStorePhone = formData.store_phone ? `${formData.store_phone_country_code}${formData.store_phone}` : '';
-    const fullWhatsappNumber = formData.whatsapp_enabled && formData.whatsapp_number 
-      ? `${formData.store_phone_country_code}${formData.whatsapp_number}` 
-      : (formData.whatsapp_enabled ? fullStorePhone : '');
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       setLoading(false);
@@ -66,9 +60,10 @@ export default function SignupPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          phone: fullPhone,
-          store_phone: fullStorePhone || undefined,
-          whatsapp_number: fullWhatsappNumber || undefined,
+          store_phone: formData.store_phone || undefined,
+          whatsapp_number: formData.whatsapp_enabled && formData.whatsapp_number 
+            ? formData.whatsapp_number 
+            : (formData.whatsapp_enabled ? formData.store_phone : undefined),
         }),
       });
 
@@ -83,9 +78,11 @@ export default function SignupPage() {
       }
       document.cookie = `token=${data.token}; path=/; max-age=604800`;
       
-      router.push('/dashboard');
+      showToast('Account created successfully! Redirecting...', 'success');
+      setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
       setError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -123,35 +120,12 @@ export default function SignupPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">Phone <span className="text-red-500">*</span></label>
-                <div className="flex gap-2">
-                  <select
-                    className="w-32 px-3 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500"
-                    value={formData.phone_country_code}
-                    onChange={(e) => setFormData({ ...formData, phone_country_code: e.target.value })}
-                  >
-                    <option value="+91">🇮🇳 +91 (India)</option>
-                    <option value="+1">🇺🇸 +1 (USA)</option>
-                    <option value="+44">🇬🇧 +44 (UK)</option>
-                    <option value="+86">🇨🇳 +86 (China)</option>
-                    <option value="+971">🇦🇪 +971 (UAE)</option>
-                    <option value="+65">🇸🇬 +65 (Singapore)</option>
-                    <option value="+61">🇦🇺 +61 (Australia)</option>
-                    <option value="+33">🇫🇷 +33 (France)</option>
-                    <option value="+49">🇩🇪 +49 (Germany)</option>
-                    <option value="+81">🇯🇵 +81 (Japan)</option>
-                  </select>
-                  <input
-                    type="tel"
-                    placeholder="9876543210"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                    className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-                    required
-                  />
-                </div>
-              </div>
+              <PhoneInputField
+                label="Phone"
+                value={formData.phone}
+                onChange={(phone) => setFormData({ ...formData, phone })}
+                required
+              />
               <Input
                 label="Password"
                 type="password"
@@ -175,34 +149,11 @@ export default function SignupPage() {
                   value={formData.store_address}
                   onChange={(e) => setFormData({ ...formData, store_address: e.target.value })}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Store Phone (Optional)</label>
-                  <div className="flex gap-2">
-                    <select
-                      className="w-32 px-3 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500"
-                      value={formData.store_phone_country_code}
-                      onChange={(e) => setFormData({ ...formData, store_phone_country_code: e.target.value })}
-                    >
-                      <option value="+91">🇮🇳 +91 (India)</option>
-                      <option value="+1">🇺🇸 +1 (USA)</option>
-                      <option value="+44">🇬🇧 +44 (UK)</option>
-                      <option value="+86">🇨🇳 +86 (China)</option>
-                      <option value="+971">🇦🇪 +971 (UAE)</option>
-                      <option value="+65">🇸🇬 +65 (Singapore)</option>
-                      <option value="+61">🇦🇺 +61 (Australia)</option>
-                      <option value="+33">🇫🇷 +33 (France)</option>
-                      <option value="+49">🇩🇪 +49 (Germany)</option>
-                      <option value="+81">🇯🇵 +81 (Japan)</option>
-                    </select>
-                    <input
-                      type="tel"
-                      placeholder="9876543210"
-                      value={formData.store_phone}
-                      onChange={(e) => setFormData({ ...formData, store_phone: e.target.value.replace(/\D/g, '') })}
-                      className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-                    />
-                  </div>
-                </div>
+                <PhoneInputField
+                  label="Store Phone (Optional)"
+                  value={formData.store_phone}
+                  onChange={(phone) => setFormData({ ...formData, store_phone: phone })}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Serial Prefix"
@@ -233,35 +184,14 @@ export default function SignupPage() {
                   </label>
                 </div>
                 {formData.whatsapp_enabled && (
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">WhatsApp Number</label>
-                    <div className="flex gap-2">
-                      <select
-                        className="w-32 px-3 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500"
-                        value={formData.store_phone_country_code}
-                        onChange={(e) => setFormData({ ...formData, store_phone_country_code: e.target.value })}
-                      >
-                        <option value="+91">🇮🇳 +91 (India)</option>
-                        <option value="+1">🇺🇸 +1 (USA)</option>
-                        <option value="+44">🇬🇧 +44 (UK)</option>
-                        <option value="+86">🇨🇳 +86 (China)</option>
-                        <option value="+971">🇦🇪 +971 (UAE)</option>
-                        <option value="+65">🇸🇬 +65 (Singapore)</option>
-                        <option value="+61">🇦🇺 +61 (Australia)</option>
-                        <option value="+33">🇫🇷 +33 (France)</option>
-                        <option value="+49">🇩🇪 +49 (Germany)</option>
-                        <option value="+81">🇯🇵 +81 (Japan)</option>
-                      </select>
-                      <input
-                        type="tel"
-                        placeholder="9876543210"
-                        value={formData.whatsapp_number}
-                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/\D/g, '') })}
-                        className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-                      />
-                    </div>
-                    <p className="text-xs text-neutral-500 mt-1">Leave empty to use store phone number</p>
-                  </div>
+                  <>
+                    <PhoneInputField
+                      label="WhatsApp Number"
+                      value={formData.whatsapp_number}
+                      onChange={(phone) => setFormData({ ...formData, whatsapp_number: phone })}
+                    />
+                    <p className="text-xs text-neutral-500">Leave empty to use store phone number</p>
+                  </>
                 )}
               </div>
 

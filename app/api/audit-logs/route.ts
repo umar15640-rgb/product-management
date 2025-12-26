@@ -20,14 +20,33 @@ async function handler(req: NextRequest) {
     if (userId) query.user_id = userId;
 
     const logs = await SystemAuditLog.find(query)
-      .populate('user_id', 'full_name email')
+      .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .sort({ created_at: -1 });
+      .lean();
+
+    const { StoreUser } = await import('@/models/StoreUser');
+    const { UserAccount } = await import('@/models/UserAccount');
+
+    const enrichedLogs = await Promise.all(
+      logs.map(async (log) => {
+        if (log.user_id) {
+          const storeUser = await StoreUser.findById(log.user_id).select('full_name email').lean();
+          if (storeUser) {
+            return { ...log, user_id: storeUser };
+          }
+          const userAccount = await UserAccount.findById(log.user_id).select('full_name email').lean();
+          if (userAccount) {
+            return { ...log, user_id: userAccount };
+          }
+        }
+        return log;
+      })
+    );
 
     const total = await SystemAuditLog.countDocuments(query);
 
-    return NextResponse.json({ logs, total, page, pages: Math.ceil(total / limit) });
+    return NextResponse.json({ logs: enrichedLogs, total, page, pages: Math.ceil(total / limit) });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

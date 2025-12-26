@@ -87,7 +87,7 @@ export default function AuditLogsPage() {
                     {logs.map((log) => (
                       <TableRow key={log._id}>
                         <TableCell className="text-neutral-600">{new Date(log.created_at).toLocaleString()}</TableCell>
-                        <TableCell className="font-medium">{log.user_id?.full_name || 'System'}</TableCell>
+                        <TableCell className="font-medium">{log.user_id?.full_name}</TableCell>
                         <TableCell>
                           <Badge variant="info" className="uppercase">{log.entity}</Badge>
                         </TableCell>
