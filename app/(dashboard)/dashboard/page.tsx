@@ -28,25 +28,37 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchStats = async () => {
       const token = localStorage.getItem('token');
+      if (!token) return;
       
-      const [storesRes, productsRes, warrantiesRes, claimsRes] = await Promise.all([
-        fetch('/api/stores', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/warranties', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/claims', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+      try {
+        const [storesRes, productsRes, warrantiesRes, claimsRes] = await Promise.all([
+          fetch('/api/stores', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ stores: [] }) })),
+          fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+          fetch('/api/warranties', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+          fetch('/api/claims', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+        ]);
 
-      const stores = await storesRes.json();
-      const products = await productsRes.json();
-      const warranties = await warrantiesRes.json();
-      const claims = await claimsRes.json();
+        const stores = await storesRes.json();
+        const products = await productsRes.json();
+        const warranties = await warrantiesRes.json();
+        const claims = await claimsRes.json();
 
-      setStats({
-        stores: stores.stores?.length || 0,
-        products: products.total || 0,
-        warranties: warranties.total || 0,
-        claims: claims.total || 0,
-      });
+        setStats({
+          stores: stores.stores?.length || 0,
+          products: products.total || 0,
+          warranties: warranties.total || 0,
+          claims: claims.total || 0,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Set defaults on error
+        setStats({
+          stores: 0,
+          products: 0,
+          warranties: 0,
+          claims: 0,
+        });
+      }
     };
 
     fetchStats();

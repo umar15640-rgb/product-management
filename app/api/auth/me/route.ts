@@ -13,6 +13,9 @@ export async function GET(req: NextRequest) {
     if (authContext.accountType === 'store_user') {
       // Store user (employee)
       const storeUser = authContext.storeUser;
+      // Ensure store_id is a string, not a populated object
+      const storeId = storeUser.store_id?.toString ? storeUser.store_id.toString() : (typeof storeUser.store_id === 'object' ? storeUser.store_id._id?.toString() : storeUser.store_id);
+      
       return NextResponse.json({ 
         user: {
           _id: storeUser._id,
@@ -21,9 +24,12 @@ export async function GET(req: NextRequest) {
           phone: storeUser.phone,
           role: storeUser.role,
           permissions: storeUser.permissions,
-          store_id: storeUser.store_id,
+          store_id: storeId,
         },
-        storeUser,
+        storeUser: {
+          ...storeUser.toObject(),
+          store_id: storeId,
+        },
         accountType: 'store_user',
       });
     } else {
@@ -41,7 +47,7 @@ export async function GET(req: NextRequest) {
         },
         storeUser: storeUser ? {
           _id: storeUser._id,
-          store_id: storeUser.store_id,
+          store_id: storeUser.store_id?.toString ? storeUser.store_id.toString() : (typeof storeUser.store_id === 'object' ? storeUser.store_id._id?.toString() : storeUser.store_id),
           role: storeUser.role,
           permissions: storeUser.permissions,
         } : null,

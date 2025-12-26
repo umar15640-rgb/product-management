@@ -18,6 +18,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard, permission: null },
+  { name: 'Stores', href: '/stores', icon: LuStore, permission: 'manage_stores' },
   { name: 'Customers', href: '/customers', icon: LuUser, permission: 'view_customers' },
   { name: 'Products', href: '/products', icon: LuPackage, permission: 'view_products' },
   { name: 'Warranties', href: '/warranties', icon: LuShieldCheck, permission: 'view_warranties' },
@@ -30,11 +31,17 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { activeStoreUser } = useStore();
+  const { activeStoreUser, currentUser, allStores } = useStore();
 
   // Check if user has permission
   const hasPermission = (permission: string | null) => {
     if (!permission) return true; // No permission required
+    
+    // User accounts (store owners) can manage stores
+    if (permission === 'manage_stores' && !activeStoreUser && currentUser) {
+      return true; // User accounts can always see stores
+    }
+    
     if (!activeStoreUser) return false;
     
     // Admin has all permissions

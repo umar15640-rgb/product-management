@@ -13,12 +13,15 @@ async function getHandler(req: NextRequest) {
     // Enforce data isolation - only show products from the authenticated user's store
     const storeId = await getAuthenticatedStoreId(req);
     
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId'); // Optional filter by user
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
+    const query: any = { store_id: storeIdString }; // Always filter by authenticated user's store
     if (userId) query.user_id = userId;
 
     const products = await Product.find(query)
@@ -32,6 +35,9 @@ async function getHandler(req: NextRequest) {
   } catch (error: any) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
       return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error.message === 'No store access available') {
+      return NextResponse.json({ error: 'No store access available. Please create or select a store first.' }, { status: 403 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
@@ -49,21 +55,26 @@ async function postHandler(req: NextRequest) {
       : (authContext.storeUser?._id?.toString() || authContext.userId);
 
     const body = await req.json();
-    const validated = { ...body, store_id: storeId }; // Override store_id with authenticated user's store
+    // Remove store_id from body if present - we override it with authenticated store
+    const { store_id: _, ...bodyWithoutStoreId } = body;
+    const validated = { ...bodyWithoutStoreId };
     
-    const serialData = await generateSerialNumber(storeId);
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    
+    const serialData = await generateSerialNumber(storeIdString);
 
     const product = await Product.create({
       ...validated,
       ...serialData,
       user_id: userId,
-      store_id: storeId,
+      store_id: storeIdString,
       manufacturing_date: new Date(validated.manufacturing_date),
     });
 
     await logAudit({
       userId: userId,
-      storeId: storeId,
+      storeId: storeIdString,
       entity: 'products',
       entityId: product._id,
       action: 'create',

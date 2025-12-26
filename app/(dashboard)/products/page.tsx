@@ -33,8 +33,8 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     const token = localStorage.getItem('token');
-    const userId = activeStoreUser?.user_id?._id || '';
-    const res = await fetch(`/api/products?userId=${userId}`, {
+    // Don't pass userId if empty - API will filter by store automatically
+    const res = await fetch('/api/products', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

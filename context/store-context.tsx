@@ -70,7 +70,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       // Get stores that the user has access to
-      const currentStoreId = userData.storeUser?.store_id?._id || userData.storeUser?.store_id;
+      // Handle both populated object and string ID
+      const storeIdValue = userData.storeUser?.store_id;
+      let currentStoreId: string | null = null;
+      
+      if (storeIdValue) {
+        if (typeof storeIdValue === 'string') {
+          // Already a string, but check if it's a valid ObjectId format
+          if (storeIdValue.match(/^[0-9a-fA-F]{24}$/)) {
+            currentStoreId = storeIdValue;
+          }
+        } else if (typeof storeIdValue === 'object') {
+          // It's an object, extract the _id
+          if (storeIdValue._id) {
+            currentStoreId = typeof storeIdValue._id === 'string' 
+              ? storeIdValue._id 
+              : storeIdValue._id.toString();
+          } else if (storeIdValue.toString) {
+            const str = storeIdValue.toString();
+            // Check if it's a valid ObjectId string
+            if (str.match(/^[0-9a-fA-F]{24}$/)) {
+              currentStoreId = str;
+            }
+          }
+        } else if (storeIdValue.toString) {
+          const str = storeIdValue.toString();
+          if (str.match(/^[0-9a-fA-F]{24}$/)) {
+            currentStoreId = str;
+          }
+        }
+      }
+      
       if (currentStoreId) {
         const storeRes = await fetch(`/api/stores/${currentStoreId}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -103,7 +133,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       // Fetch store users for the current store
-      if (currentStoreId) {
+      if (currentStoreId && typeof currentStoreId === 'string' && currentStoreId.match(/^[0-9a-fA-F]{24}$/)) {
         const usersRes = await fetch(`/api/store-users?store_id=${currentStoreId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -121,42 +151,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSetCurrentStore = (store: any) => {
+    if (!store || !store._id) return;
+    
+    // Ensure store._id is a string
+    const storeId = typeof store._id === 'string' ? store._id : store._id.toString();
+    
     setCurrentStoreState(store);
-    if (store && store._id) {
-      localStorage.setItem('currentStoreId', store._id);
-      // Refresh store users for the new store
-      const token = localStorage.getItem('token');
-      if (token) {
-        fetch(`/api/store-users?store_id=${store._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-          .then(res => res.json())
-          .then(usersData => {
-            const users = usersData.storeUsers || [];
-            setAllStoreUsers(users);
-            // Find logged in store user for this store
-            const loggedInForStore = loggedInStoreUsers.find(su => 
-              (su.store_id?._id || su.store_id) === store._id
-            );
-            if (loggedInForStore) {
-              setActiveStoreUser(loggedInForStore);
-            } else {
-              // Find current user's profile in this store
-              const myProfile = users.find((su: any) => su._id === activeStoreUser?._id);
-              if (myProfile) {
-                setActiveStoreUser(myProfile);
-              }
+    localStorage.setItem('currentStoreId', storeId);
+    
+    // Refresh store users for the new store
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`/api/store-users?store_id=${storeId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(usersData => {
+          const users = usersData.storeUsers || [];
+          setAllStoreUsers(users);
+          // Find logged in store user for this store
+          const loggedInForStore = loggedInStoreUsers.find(su => {
+            const suStoreId = typeof su.store_id === 'object' && su.store_id?._id 
+              ? (typeof su.store_id._id === 'string' ? su.store_id._id : su.store_id._id.toString())
+              : (typeof su.store_id === 'string' ? su.store_id : su.store_id?.toString());
+            return suStoreId === storeId;
+          });
+          if (loggedInForStore) {
+            setActiveStoreUser(loggedInForStore);
+          } else {
+            // Find current user's profile in this store
+            const myProfile = users.find((su: any) => su._id === activeStoreUser?._id);
+            if (myProfile) {
+              setActiveStoreUser(myProfile);
             }
-          })
-          .catch(err => console.error('Error fetching store users:', err));
-      }
-      // Redirect to dashboard when switching stores
-      router.push('/dashboard');
+          }
+        })
+        .catch(err => console.error('Error fetching store users:', err));
     }
+    // Redirect to dashboard when switching stores
+    router.push('/dashboard');
   };
 
   const handleSetActiveStoreUser = (user: any) => {
     setActiveStoreUser(user);
+    // Refresh context data when switching store users
+    fetchContextData();
     // Redirect to dashboard when switching store users
     router.push('/dashboard');
   };

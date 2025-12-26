@@ -59,39 +59,52 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
-    const { getAuthenticatedUser, getAuthenticatedStoreId } = await import('@/lib/auth-helpers');
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const { Store } = await import('@/models/Store');
     const authContext = await getAuthenticatedUser(req);
 
     const body = await req.json();
     const validated = storeUserSchema.parse(body);
 
-    // Verify that the current user is an admin of the store
-    const storeId = await getAuthenticatedStoreId(req);
-    
-    if (storeId !== validated.store_id) {
+    // Verify the store exists and user has access
+    const store = await Store.findById(validated.store_id);
+    if (!store) {
       return NextResponse.json(
-        { error: 'Unauthorized access to this store' },
-        { status: 403 }
+        { error: 'Store not found' },
+        { status: 404 }
       );
     }
 
-    // Get the store user for permission check
-    let currentStoreUser;
+    // Check if user has permission to create store users for this store
     if (authContext.accountType === 'store_user') {
-      currentStoreUser = authContext.storeUser;
+      // Store user - must be admin of the same store
+      if (authContext.storeId !== validated.store_id) {
+        return NextResponse.json(
+          { error: 'Unauthorized access to this store' },
+          { status: 403 }
+        );
+      }
+      if (authContext.storeUser?.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Only admin users can create store users' },
+          { status: 403 }
+        );
+      }
     } else {
-      // User account - get their store user in this store
-      currentStoreUser = await StoreUser.findOne({
-        user_account_id: authContext.userId,
-        store_id: storeId,
-      });
-    }
-
-    if (!currentStoreUser || currentStoreUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Only admin users can create store users' },
-        { status: 403 }
-      );
+      // User account - must own the store or be admin in it
+      if (store.owner_user_id.toString() !== authContext.userId) {
+        // Check if they have a store user with admin role in this store
+        const storeUser = await StoreUser.findOne({
+          user_account_id: authContext.userId,
+          store_id: validated.store_id,
+        });
+        if (!storeUser || storeUser.role !== 'admin') {
+          return NextResponse.json(
+            { error: 'Unauthorized access to this store' },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Check if email is already used in this store

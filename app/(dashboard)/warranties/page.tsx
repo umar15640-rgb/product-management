@@ -33,8 +33,8 @@ export default function WarrantiesPage() {
 
   const fetchWarranties = async () => {
     const token = localStorage.getItem('token');
-    const userId = activeStoreUser?.user_id?._id || '';
-    const res = await fetch(`/api/warranties?userId=${userId}`, {
+    // Don't pass userId if empty - API will filter by store automatically
+    const res = await fetch('/api/warranties', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -43,8 +43,8 @@ export default function WarrantiesPage() {
 
   const fetchProducts = async () => {
     const token = localStorage.getItem('token');
-    const userId = activeStoreUser?.user_id?._id || '';
-    const res = await fetch(`/api/products?userId=${userId}`, {
+    // Don't pass userId if empty - API will filter by store automatically
+    const res = await fetch('/api/products', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -53,8 +53,8 @@ export default function WarrantiesPage() {
 
   const fetchCustomers = async () => {
     const token = localStorage.getItem('token');
-    const userId = activeStoreUser?.user_id?._id || '';
-    const res = await fetch(`/api/customers?userId=${userId}`, {
+    // Don't pass userId if empty - API will filter by store automatically
+    const res = await fetch('/api/customers', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

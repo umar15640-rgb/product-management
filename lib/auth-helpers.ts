@@ -61,10 +61,15 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
         throw new Error('Store user not found');
       }
       
+      // Ensure store_id is always a string
+      const storeId = typeof storeUser.store_id === 'object' && storeUser.store_id?._id
+        ? (typeof storeUser.store_id._id === 'string' ? storeUser.store_id._id : storeUser.store_id._id.toString())
+        : (typeof storeUser.store_id === 'string' ? storeUser.store_id : storeUser.store_id.toString());
+      
       return {
         userId: storeUserId,
         accountType: 'store_user',
-        storeId: storeUser.store_id.toString(),
+        storeId,
         storeUser,
       };
     } else {
@@ -91,12 +96,28 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
         storeUser = await StoreUser.findOne({ user_account_id: userId }).populate('store_id');
       }
       
+      // Ensure storeId is always a string if present
+      let storeId: string | undefined = undefined;
+      if (storeUser?.store_id) {
+        if (typeof storeUser.store_id === 'object' && storeUser.store_id?._id) {
+          storeId = typeof storeUser.store_id._id === 'string' 
+            ? storeUser.store_id._id 
+            : storeUser.store_id._id.toString();
+        } else {
+          storeId = typeof storeUser.store_id === 'string' 
+            ? storeUser.store_id 
+            : storeUser.store_id.toString();
+        }
+      } else if (storeIdParam) {
+        storeId = storeIdParam;
+      }
+      
       return {
         userId,
         accountType: 'user_account',
         userAccount,
         storeUser: storeUser || undefined,
-        storeId: storeUser?.store_id?.toString() || storeIdParam || undefined,
+        storeId,
       };
     }
   } catch (error: any) {
@@ -112,7 +133,10 @@ export async function getAuthenticatedStoreId(req: NextRequest): Promise<string>
   if (!authContext.storeId) {
     throw new Error('No store access available');
   }
-  return authContext.storeId;
+  // Ensure storeId is always returned as a string
+  return typeof authContext.storeId === 'string' 
+    ? authContext.storeId 
+    : authContext.storeId.toString();
 }
 
 /**

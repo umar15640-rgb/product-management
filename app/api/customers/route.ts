@@ -12,12 +12,15 @@ async function getHandler(req: NextRequest) {
     // Enforce data isolation - only show customers from the authenticated user's store
     const storeId = await getAuthenticatedStoreId(req);
     
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
+    const query: any = { store_id: storeIdString }; // Always filter by authenticated user's store
     if (userId) query.user_id = userId;
     
     const customers = await Customer.find(query)
@@ -32,6 +35,9 @@ async function getHandler(req: NextRequest) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
+    if (error.message === 'No store access available') {
+      return NextResponse.json({ error: 'No store access available. Please create or select a store first.' }, { status: 403 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
@@ -43,6 +49,8 @@ async function postHandler(req: NextRequest) {
     
     const authContext = await getAuthenticatedUser(req);
     const storeId = await getAuthenticatedStoreId(req);
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
     const userId = authContext.accountType === 'store_user' 
       ? authContext.userId 
       : (authContext.storeUser?._id?.toString() || authContext.userId);
@@ -50,17 +58,17 @@ async function postHandler(req: NextRequest) {
     const body = await req.json();
     // Remove store_id from body if present (we override it)
     const { store_id, ...bodyWithoutStoreId } = body;
-    const validated = { ...customerSchema.parse(bodyWithoutStoreId), store_id: storeId }; // Override store_id
+    const validated = { ...customerSchema.parse(bodyWithoutStoreId) }; // Don't include store_id in validated
 
     const customer = await Customer.create({
       ...validated,
       user_id: userId,
-      store_id: storeId,
+      store_id: storeIdString,
     });
 
     await logAudit({
       userId: userId,
-      storeId: storeId,
+      storeId: storeIdString,
       entity: 'customers',
       entityId: customer._id,
       action: 'create',

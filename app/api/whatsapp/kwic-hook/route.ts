@@ -110,7 +110,7 @@ Days Remaining: ${daysLeft > 0 ? daysLeft : 'Expired'}`;
       
       const claim = await Claim.create({
         warranty_id: session.data.warrantyId,
-        store_id: warranty!.store_id,
+        store_id: warranty!.store_id.toString ? warranty!.store_id.toString() : warranty!.store_id,
         claim_type: 'repair',
         description: messageText,
         status: 'pending',

@@ -13,12 +13,15 @@ async function getHandler(req: NextRequest) {
     // Enforce data isolation - only show claims from the authenticated user's store
     const storeId = await getAuthenticatedStoreId(req);
     
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const query: any = { store_id: storeId }; // Always filter by authenticated user's store
+    const query: any = { store_id: storeIdString }; // Always filter by authenticated user's store
     
     const claims = await Claim.find(query)
       .populate({
@@ -35,6 +38,9 @@ async function getHandler(req: NextRequest) {
   } catch (error: any) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {
       return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error.message === 'No store access available') {
+      return NextResponse.json({ error: 'No store access available. Please create or select a store first.' }, { status: 403 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
@@ -54,6 +60,8 @@ async function postHandler(req: NextRequest) {
     
     const authContext = await getAuthenticatedUser(req);
     const storeId = await getAuthenticatedStoreId(req);
+    // Ensure storeId is a string
+    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
     const userId = authContext.accountType === 'store_user' 
       ? authContext.userId 
       : (authContext.storeUser?._id?.toString() || authContext.userId);
@@ -67,13 +75,13 @@ async function postHandler(req: NextRequest) {
     }
 
     // Verify warranty belongs to authenticated user's store
-    if (warranty.store_id.toString() !== storeId) {
+    if (warranty.store_id.toString() !== storeIdString) {
       return NextResponse.json({ error: 'Warranty does not belong to your store' }, { status: 403 });
     }
 
     const claim = await Claim.create({
       ...validated,
-      store_id: storeId,
+      store_id: storeIdString,
       timeline_events: [
         {
           timestamp: new Date(),
@@ -87,7 +95,7 @@ async function postHandler(req: NextRequest) {
 
     await logAudit({
       userId: userId,
-      storeId: storeId,
+      storeId: storeIdString,
       entity: 'claims',
       entityId: claim._id,
       action: 'create',
