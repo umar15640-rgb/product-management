@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { ApiKeyManagement } from '@/models/ApiKeyManagement';
-import { getAuthenticatedUserId, authenticateStoreRequest } from '@/lib/auth-helpers';
 import { StoreUser } from '@/models/StoreUser';
+import { Store } from '@/models/Store';
 import { z } from 'zod';
-import mongoose from 'mongoose';
 
 const apiKeySchema = z.object({
   store_id: z.string(),
@@ -16,7 +15,8 @@ async function getHandler(req: NextRequest) {
   try {
     await connectDB();
     
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
     const { searchParams } = new URL(req.url);
     const storeId = searchParams.get('store_id');
 
@@ -25,7 +25,23 @@ async function getHandler(req: NextRequest) {
     }
 
     // Verify user has access to this store
-    await authenticateStoreRequest(req, storeId);
+    if (authContext.accountType === 'store_user') {
+      if (authContext.storeId !== storeId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+    } else {
+      // User account - check if they own the store or have access via store user
+      const store = await Store.findById(storeId);
+      if (!store || store.owner_user_id.toString() !== authContext.userId) {
+        const storeUser = await StoreUser.findOne({
+          user_account_id: authContext.userId,
+          store_id: storeId,
+        });
+        if (!storeUser) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+      }
+    }
 
     const apiKeys = await ApiKeyManagement.find({ store_id: storeId })
       .sort({ created_at: -1 });
@@ -43,19 +59,31 @@ async function postHandler(req: NextRequest) {
   try {
     await connectDB();
 
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
     const body = await req.json();
     const validated = apiKeySchema.parse(body);
 
     // Verify user has admin access to this store
-    const storeUser = await StoreUser.findOne({
-      store_id: validated.store_id,
-      user_id: userId,
-      role: 'admin',
-    });
-
-    if (!storeUser) {
-      return NextResponse.json({ error: 'Only admin users can create API keys' }, { status: 403 });
+    if (authContext.accountType === 'store_user') {
+      // Store user - check if they're admin of this store
+      if (authContext.storeId !== validated.store_id || authContext.storeUser?.role !== 'admin') {
+        return NextResponse.json({ error: 'Only admin users can create API keys' }, { status: 403 });
+      }
+    } else {
+      // User account - check if they own the store or are admin store user
+      const storeUser = await StoreUser.findOne({
+        user_account_id: authContext.userId,
+        store_id: validated.store_id,
+        role: 'admin',
+      });
+      if (!storeUser) {
+        // Check if they own the store
+        const store = await Store.findById(validated.store_id);
+        if (!store || store.owner_user_id.toString() !== authContext.userId) {
+          return NextResponse.json({ error: 'Only admin users can create API keys' }, { status: 403 });
+        }
+      }
     }
 
     const apiKey = await ApiKeyManagement.create({

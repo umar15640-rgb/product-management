@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useStore } from '@/context/store-context'; // Import useStore
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -9,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 
 export default function ClaimsPage() {
+  const { currentStore } = useStore(); // Get currentStore
   const [claims, setClaims] = useState<any[]>([]);
   const [warranties, setWarranties] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,13 +24,17 @@ export default function ClaimsPage() {
   });
 
   useEffect(() => {
-    fetchClaims();
-    fetchWarranties();
-  }, []);
+    // Only fetch when currentStore is available
+    if (currentStore) {
+      fetchClaims();
+      fetchWarranties();
+    }
+  }, [currentStore]);
 
   const fetchClaims = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/claims', {
+    const res = await fetch(`/api/claims?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -36,8 +42,10 @@ export default function ClaimsPage() {
   };
 
   const fetchWarranties = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/warranties', {
+    // Fetch warranties for dropdown, scoped to current store
+    const res = await fetch(`/api/warranties?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

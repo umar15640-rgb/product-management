@@ -19,6 +19,7 @@ const StoreUserSchema = new Schema<IStoreUser>(
 );
 
 StoreUserSchema.index({ store_id: 1, email: 1 }, { unique: true });
+StoreUserSchema.index({ store_id: 1, user_account_id: 1 }, { unique: true, sparse: true });
 StoreUserSchema.index({ email: 1 });
 StoreUserSchema.index({ store_id: 1 });
 StoreUserSchema.index({ user_account_id: 1 });

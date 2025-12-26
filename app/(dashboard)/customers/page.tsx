@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 
 export default function CustomersPage() {
-  const { activeStoreUser } = useStore();
+  const { activeStoreUser, currentStore } = useStore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,14 +27,14 @@ export default function CustomersPage() {
   });
 
   useEffect(() => {
-    if (activeStoreUser) fetchCustomers();
+    if (activeStoreUser && currentStore) fetchCustomers();
     fetchStores();
-  }, [activeStoreUser]);
+  }, [activeStoreUser, currentStore]);
 
   const fetchCustomers = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    const userId = activeStoreUser?.user_id?._id || '';
-    const res = await fetch(`/api/customers?userId=${userId}`, {
+    const res = await fetch(`/api/customers?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

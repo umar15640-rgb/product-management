@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useStore } from '@/context/store-context'; // Import useStore
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +19,7 @@ import {
 } from 'react-icons/lu';
 
 export default function DashboardPage() {
+  const { currentStore } = useStore(); // Get current store from context
   const [stats, setStats] = useState({
     stores: 0,
     products: 0,
@@ -30,12 +32,17 @@ export default function DashboardPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
       
+      if (!currentStore?._id) return;
+
+      const storeId = currentStore._id;
+      
       try {
         const [storesRes, productsRes, warrantiesRes, claimsRes] = await Promise.all([
           fetch('/api/stores', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ stores: [] }) })),
-          fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
-          fetch('/api/warranties', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
-          fetch('/api/claims', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+          // Pass storeId to these endpoints
+          fetch(`/api/products?storeId=${storeId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+          fetch(`/api/warranties?storeId=${storeId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
+          fetch(`/api/claims?storeId=${storeId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ ok: false, json: async () => ({ total: 0 }) })),
         ]);
 
         const stores = await storesRes.json();
@@ -51,7 +58,6 @@ export default function DashboardPage() {
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
-        // Set defaults on error
         setStats({
           stores: 0,
           products: 0,
@@ -62,7 +68,7 @@ export default function DashboardPage() {
     };
 
     fetchStats();
-  }, []);
+  }, [currentStore]); // Add currentStore as dependency
 
   // Updated to use Icon components instead of strings
   const quickActions = [

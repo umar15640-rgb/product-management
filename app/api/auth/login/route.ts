@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { UserAccount } from '@/models/UserAccount';
 import { StoreUser } from '@/models/StoreUser';
-import { Store } from '@/models/Store';
+// Import Store model for side-effects (registration)
+import '@/models/Store'; 
 import { comparePassword, generateToken } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -30,14 +31,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
       }
 
-      // Find store user for this user account (they should have at least one store)
+      // Find store user for this user account
+      // Note: populate('store_id') requires the Store model to be registered
       const storeUser = await StoreUser.findOne({ 
         user_account_id: userAccount._id,
         ...(store_id ? { store_id } : {})
       }).populate('store_id');
 
       if (!storeUser) {
-        // User account exists but no store yet - they need to create a store
+        // User account exists but no store yet
         const token = generateToken(userAccount._id.toString());
         return NextResponse.json({
           token,
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Generate token with store user ID (prefixed to distinguish from user_account)
+    // Generate token with store user ID
     const token = generateToken(`store_user_${storeUser._id.toString()}`);
 
     return NextResponse.json({

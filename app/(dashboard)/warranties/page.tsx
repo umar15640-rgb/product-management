@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 
 export default function WarrantiesPage() {
-  const { activeStoreUser } = useStore();
+  const { activeStoreUser, currentStore } = useStore(); // Destructure currentStore
   const [warranties, setWarranties] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -24,17 +24,18 @@ export default function WarrantiesPage() {
   });
 
   useEffect(() => {
-    if (activeStoreUser) {
+    // Only fetch when currentStore is available
+    if (activeStoreUser && currentStore) {
       fetchWarranties();
       fetchProducts();
       fetchCustomers();
     }
-  }, [activeStoreUser]);
+  }, [activeStoreUser, currentStore]);
 
   const fetchWarranties = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    // Don't pass userId if empty - API will filter by store automatically
-    const res = await fetch('/api/warranties', {
+    const res = await fetch(`/api/warranties?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -42,9 +43,10 @@ export default function WarrantiesPage() {
   };
 
   const fetchProducts = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    // Don't pass userId if empty - API will filter by store automatically
-    const res = await fetch('/api/products', {
+    // Fetch products for dropdown, scoped to current store
+    const res = await fetch(`/api/products?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -52,9 +54,10 @@ export default function WarrantiesPage() {
   };
 
   const fetchCustomers = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    // Don't pass userId if empty - API will filter by store automatically
-    const res = await fetch('/api/customers', {
+    // Fetch customers for dropdown, scoped to current store
+    const res = await fetch(`/api/customers?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

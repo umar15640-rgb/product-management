@@ -121,6 +121,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       
       if (storesData.stores && storesData.stores.length > 0) {
         setAllStores(storesData.stores);
+        // If no current store set yet, use the first one
+        if (!currentStoreId && storesData.stores[0]) {
+          setCurrentStoreState(storesData.stores[0]);
+          localStorage.setItem('currentStoreId', storesData.stores[0]._id.toString());
+        }
       } else if (currentStoreId) {
         // If no stores returned but we have a current store, use it
         const storeRes = await fetch(`/api/stores/${currentStoreId}`, {

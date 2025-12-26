@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 
 export default function ProductsPage() {
-  const { activeStoreUser } = useStore();
+  const { activeStoreUser, currentStore } = useStore(); // Destructure currentStore
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,14 +27,16 @@ export default function ProductsPage() {
   });
 
   useEffect(() => {
-    if (activeStoreUser) fetchProducts();
+    // Only fetch when currentStore is available
+    if (activeStoreUser && currentStore) fetchProducts();
     fetchStores();
-  }, [activeStoreUser]);
+  }, [activeStoreUser, currentStore]); // Add currentStore to dependencies
 
   const fetchProducts = async () => {
+    if (!currentStore?._id) return;
     const token = localStorage.getItem('token');
-    // Don't pass userId if empty - API will filter by store automatically
-    const res = await fetch('/api/products', {
+    // Pass storeId query parameter
+    const res = await fetch(`/api/products?storeId=${currentStore._id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

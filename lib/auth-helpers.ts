@@ -3,6 +3,9 @@ import { verifyToken, getUserIdFromToken } from './auth';
 import { connectDB } from './db';
 import { StoreUser } from '@/models/StoreUser';
 import { UserAccount } from '@/models/UserAccount';
+import { Store } from '@/models/Store';
+// Import Store model to ensure schema is registered before populate
+import '@/models/Store';
 
 export interface AuthContext {
   userId: string;
@@ -55,6 +58,7 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
     if (userId.startsWith('store_user_')) {
       const storeUserId = userId.replace('store_user_', '');
       await connectDB();
+      // Ensure 'stores' model is registered (via import above) before populate
       const storeUser = await StoreUser.findById(storeUserId).populate('store_id');
       
       if (!storeUser) {
@@ -63,8 +67,8 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
       
       // Ensure store_id is always a string
       const storeId = typeof storeUser.store_id === 'object' && storeUser.store_id?._id
-        ? (typeof storeUser.store_id._id === 'string' ? storeUser.store_id._id : storeUser.store_id._id.toString())
-        : (typeof storeUser.store_id === 'string' ? storeUser.store_id : storeUser.store_id.toString());
+        ? (typeof storeUser.store_id._id === 'string' ? storeUser.store_id._id : String(storeUser.store_id._id))
+        : (typeof storeUser.store_id === 'string' ? storeUser.store_id : String(storeUser.store_id));
       
       return {
         userId: storeUserId,
@@ -102,11 +106,11 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
         if (typeof storeUser.store_id === 'object' && storeUser.store_id?._id) {
           storeId = typeof storeUser.store_id._id === 'string' 
             ? storeUser.store_id._id 
-            : storeUser.store_id._id.toString();
+            : String(storeUser.store_id._id);
         } else {
           storeId = typeof storeUser.store_id === 'string' 
             ? storeUser.store_id 
-            : storeUser.store_id.toString();
+            : String(storeUser.store_id);
         }
       } else if (storeIdParam) {
         storeId = storeIdParam;
@@ -130,13 +134,23 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<AuthContex
  */
 export async function getAuthenticatedStoreId(req: NextRequest): Promise<string> {
   const authContext = await getAuthenticatedUser(req);
+  
+  // For user_accounts without a storeUser, try to get their first store
+  if (!authContext.storeId && authContext.accountType === 'user_account') {
+    await connectDB();
+    const store = await Store.findOne({ owner_user_id: authContext.userId });
+    if (store) {
+      return typeof store._id === 'string' ? store._id : store._id.toString();
+    }
+  }
+  
   if (!authContext.storeId) {
     throw new Error('No store access available');
   }
   // Ensure storeId is always returned as a string
   return typeof authContext.storeId === 'string' 
     ? authContext.storeId 
-    : authContext.storeId.toString();
+    : String(authContext.storeId);
 }
 
 /**
@@ -149,7 +163,11 @@ export async function authenticateRequest(req: NextRequest): Promise<AuthContext
   }
 
   const userId = getUserIdFromToken(token);
-  return { userId };
+  return { 
+    userId, 
+    accountType: userId.startsWith('store_user_') ? 'store_user' : 'user_account',
+    storeId: undefined,
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { StoreUser } from '@/models/StoreUser';
+import { Store } from '@/models/Store'; // Use static import
 import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -60,7 +61,6 @@ async function postHandler(req: NextRequest) {
     await connectDB();
 
     const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
-    const { Store } = await import('@/models/Store');
     const authContext = await getAuthenticatedUser(req);
 
     const body = await req.json();
@@ -118,23 +118,23 @@ async function postHandler(req: NextRequest) {
     }
 
     // Hash password and create store user
-    const password_hash = await hashPassword(validated.password);
+    const hashedPassword = await hashPassword(validated.password);
 
     const storeUser = await StoreUser.create({
       store_id: validated.store_id,
       full_name: validated.full_name,
       email: validated.email.toLowerCase(),
       phone: validated.phone,
-      password_hash,
+      password_hash: hashedPassword,
       role: validated.role,
       permissions: validated.permissions || [],
     });
 
     // Return store user without password hash
     const storeUserResponse = storeUser.toObject();
-    delete storeUserResponse.password_hash;
+    const { password_hash, ...storeUserWithoutPassword } = storeUserResponse;
 
-    return NextResponse.json({ storeUser: storeUserResponse }, { status: 201 });
+    return NextResponse.json({ storeUser: storeUserWithoutPassword }, { status: 201 });
 
   } catch (error: any) {
     if (error.message === 'Missing authorization token' || error.message === 'Invalid or expired token') {

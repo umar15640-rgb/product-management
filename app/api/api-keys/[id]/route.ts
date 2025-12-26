@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { ApiKeyManagement } from '@/models/ApiKeyManagement';
-import { getAuthenticatedUserId } from '@/lib/auth-helpers';
 import { StoreUser } from '@/models/StoreUser';
+import { Store } from '@/models/Store';
 import { z } from 'zod';
 
 const updateApiKeySchema = z.object({
@@ -15,7 +15,8 @@ async function getHandler(req: NextRequest, { params }: { params: { id: string }
   try {
     await connectDB();
     
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
     const apiKey = await ApiKeyManagement.findById(params.id);
 
     if (!apiKey) {
@@ -23,13 +24,21 @@ async function getHandler(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Verify user has access to this store
-    const storeUser = await StoreUser.findOne({
-      store_id: apiKey.store_id,
-      user_id: userId,
-    });
-
-    if (!storeUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (authContext.accountType === 'store_user') {
+      if (authContext.storeId !== apiKey.store_id.toString()) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+    } else {
+      const store = await Store.findById(apiKey.store_id);
+      if (!store || store.owner_user_id.toString() !== authContext.userId) {
+        const storeUser = await StoreUser.findOne({
+          user_account_id: authContext.userId,
+          store_id: apiKey.store_id,
+        });
+        if (!storeUser) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+      }
     }
 
     return NextResponse.json({ apiKey });
@@ -45,7 +54,8 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
   try {
     await connectDB();
 
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
     const body = await req.json();
     const validated = updateApiKeySchema.parse(body);
 
@@ -55,14 +65,22 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Verify user has admin access to this store
-    const storeUser = await StoreUser.findOne({
-      store_id: apiKey.store_id,
-      user_id: userId,
-      role: 'admin',
-    });
-
-    if (!storeUser) {
-      return NextResponse.json({ error: 'Only admin users can update API keys' }, { status: 403 });
+    if (authContext.accountType === 'store_user') {
+      if (authContext.storeId !== apiKey.store_id.toString() || authContext.storeUser?.role !== 'admin') {
+        return NextResponse.json({ error: 'Only admin users can update API keys' }, { status: 403 });
+      }
+    } else {
+      const storeUser = await StoreUser.findOne({
+        user_account_id: authContext.userId,
+        store_id: apiKey.store_id,
+        role: 'admin',
+      });
+      if (!storeUser) {
+        const store = await Store.findById(apiKey.store_id);
+        if (!store || store.owner_user_id.toString() !== authContext.userId) {
+          return NextResponse.json({ error: 'Only admin users can update API keys' }, { status: 403 });
+        }
+      }
     }
 
     const updateData: any = {};
@@ -94,7 +112,8 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
   try {
     await connectDB();
 
-    const userId = getAuthenticatedUserId(req);
+    const { getAuthenticatedUser } = await import('@/lib/auth-helpers');
+    const authContext = await getAuthenticatedUser(req);
 
     const apiKey = await ApiKeyManagement.findById(params.id);
     if (!apiKey) {
@@ -102,14 +121,22 @@ async function deleteHandler(req: NextRequest, { params }: { params: { id: strin
     }
 
     // Verify user has admin access to this store
-    const storeUser = await StoreUser.findOne({
-      store_id: apiKey.store_id,
-      user_id: userId,
-      role: 'admin',
-    });
-
-    if (!storeUser) {
-      return NextResponse.json({ error: 'Only admin users can delete API keys' }, { status: 403 });
+    if (authContext.accountType === 'store_user') {
+      if (authContext.storeId !== apiKey.store_id.toString() || authContext.storeUser?.role !== 'admin') {
+        return NextResponse.json({ error: 'Only admin users can delete API keys' }, { status: 403 });
+      }
+    } else {
+      const storeUser = await StoreUser.findOne({
+        user_account_id: authContext.userId,
+        store_id: apiKey.store_id,
+        role: 'admin',
+      });
+      if (!storeUser) {
+        const store = await Store.findById(apiKey.store_id);
+        if (!store || store.owner_user_id.toString() !== authContext.userId) {
+          return NextResponse.json({ error: 'Only admin users can delete API keys' }, { status: 403 });
+        }
+      }
     }
 
     await ApiKeyManagement.findByIdAndDelete(params.id);
