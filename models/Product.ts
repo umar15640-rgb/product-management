@@ -11,8 +11,7 @@ const ProductSchema = new Schema<IProduct>(
     serial_number: { type: String, required: true, unique: true },
     serial_prefix_used: { type: String, required: true },
     serial_suffix_used: { type: String },
-    // serial_number_index removed as we are using random generation now
-    manufacturing_date: { type: Date, required: true }, // Changed from purchase_date
+    manufacturing_date: { type: Date, required: true }, 
     base_warranty_months: { type: Number, required: true, default: 12 },
   },
   {

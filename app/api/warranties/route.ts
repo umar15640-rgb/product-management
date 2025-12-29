@@ -82,6 +82,16 @@ async function postHandler(req: NextRequest) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
+    // Verify product belongs to authenticated user's store BEFORE proceeding
+    if (product.store_id.toString() !== storeIdString) {
+      return NextResponse.json({ error: 'Product does not belong to your store' }, { status: 403 });
+    }
+
+    // Verify customer belongs to authenticated user's store
+    if (customer.store_id.toString() !== storeIdString) {
+      return NextResponse.json({ error: 'Customer does not belong to your store' }, { status: 403 });
+    }
+
     const store = await Store.findById(product.store_id);
     if (!store) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
@@ -90,33 +100,40 @@ async function postHandler(req: NextRequest) {
     const warranty_start = new Date(validated.warranty_start);
     const warranty_end = calculateWarrantyEnd(warranty_start, product.base_warranty_months);
 
-    const qr_code_url = await generateQRCode(product.serial_number);
+    let qr_code_url = '';
+    let warranty_pdf_url = '';
 
-    // Update to use manufacturing_date if available on product, else fallback
-    const warranty_pdf_url = await generateWarrantyPDF({
-      store_name: store.store_name,
-      store_logo: store.store_logo,
-      store_address: store.address,
-      store_phone: store.contact_phone,
-      customer_name: customer.customer_name,
-      customer_phone: customer.phone,
-      customer_email: customer.email,
-      customer_address: customer.address,
-      product_model: product.product_model,
-      brand: product.brand,
-      category: product.category,
-      serial_number: product.serial_number,
-      // Use manufacturing_date here as requested previously
-      manufacturing_date: product.manufacturing_date 
-        ? new Date(product.manufacturing_date).toLocaleDateString() 
-        : new Date().toLocaleDateString(),
-      warranty_start: warranty_start.toLocaleDateString(),
-      warranty_end: warranty_end.toLocaleDateString(),
-    });
+    // Try to generate QR code, but don't fail if it errors
+    try {
+      qr_code_url = await generateQRCode(product.serial_number);
+    } catch (qrError: any) {
+      console.error('QR Code generation failed:', qrError.message);
+    }
 
-    // Verify product belongs to authenticated user's store
-    if (product.store_id.toString() !== storeIdString) {
-      return NextResponse.json({ error: 'Product does not belong to your store' }, { status: 403 });
+    // Try to generate PDF, but don't fail if it errors
+    try {
+      warranty_pdf_url = await generateWarrantyPDF({
+        store_name: store.store_name,
+        store_logo: store.store_logo,
+        store_address: store.address,
+        store_phone: store.contact_phone,
+        customer_name: customer.customer_name,
+        customer_phone: customer.phone,
+        customer_email: customer.email,
+        customer_address: customer.address,
+        product_model: product.product_model,
+        brand: product.brand,
+        category: product.category,
+        serial_number: product.serial_number,
+        // Use manufacturing_date here as requested previously
+        manufacturing_date: product.manufacturing_date 
+          ? new Date(product.manufacturing_date).toLocaleDateString() 
+          : new Date().toLocaleDateString(),
+        warranty_start: warranty_start.toLocaleDateString(),
+        warranty_end: warranty_end.toLocaleDateString(),
+      });
+    } catch (pdfError: any) {
+      console.error('PDF generation failed:', pdfError.message);
     }
 
     const warranty = await Warranty.create({
@@ -140,15 +157,22 @@ async function postHandler(req: NextRequest) {
       newValue: warranty,
     });
 
+    // Try to send WhatsApp message, but don't fail if it errors
     if (store.whatsapp_enabled && customer.phone) {
-      const pdfUrl = `${process.env.NEXT_PUBLIC_APP_URL}${warranty_pdf_url}`;
-      await whatsappClient.sendDocument(
-        customer.phone,
-        pdfUrl,
-        `Warranty-${product.serial_number}.pdf`,
-        `Your warranty for ${product.brand} ${product.product_model} has been registered. Valid until ${warranty_end.toLocaleDateString()}.`,
-        store._id
-      );
+      try {
+        const pdfUrl = warranty_pdf_url ? `${process.env.NEXT_PUBLIC_APP_URL}${warranty_pdf_url}` : '';
+        if (pdfUrl) {
+          await whatsappClient.sendDocument(
+            customer.phone,
+            pdfUrl,
+            `Warranty-${product.serial_number}.pdf`,
+            `Your warranty for ${product.brand} ${product.product_model} has been registered. Valid until ${warranty_end.toLocaleDateString()}.`,
+            store._id
+          );
+        }
+      } catch (whatsappError: any) {
+        console.error('WhatsApp message failed:', whatsappError.message);
+      }
     }
 
     return NextResponse.json({ warranty }, { status: 201 });
