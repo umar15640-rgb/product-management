@@ -9,7 +9,6 @@ import { generateQRCode } from '@/lib/qr-generator';
 import { generateWarrantyPDF } from '@/lib/pdf-generator';
 import { calculateWarrantyEnd } from '@/lib/utils';
 import { logAudit } from '@/lib/audit-logger';
-import { whatsappClient } from '@/lib/whatsapp-client';
 import { z } from 'zod';
 
 async function getHandler(req: NextRequest) {
@@ -156,24 +155,6 @@ async function postHandler(req: NextRequest) {
       action: 'create',
       newValue: warranty,
     });
-
-    // Try to send WhatsApp message, but don't fail if it errors
-    if (store.whatsapp_enabled && customer.phone) {
-      try {
-        const pdfUrl = warranty_pdf_url ? `${process.env.NEXT_PUBLIC_APP_URL}${warranty_pdf_url}` : '';
-        if (pdfUrl) {
-          await whatsappClient.sendDocument(
-            customer.phone,
-            pdfUrl,
-            `Warranty-${product.serial_number}.pdf`,
-            `Your warranty for ${product.brand} ${product.product_model} has been registered. Valid until ${warranty_end.toLocaleDateString()}.`,
-            store._id
-          );
-        }
-      } catch (whatsappError: any) {
-        console.error('WhatsApp message failed:', whatsappError.message);
-      }
-    }
 
     return NextResponse.json({ warranty }, { status: 201 });
   } catch (error: any) {

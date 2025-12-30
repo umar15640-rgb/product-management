@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { PhoneInputField } from '@/components/ui/PhoneInputField';
 import { LuPencil } from 'react-icons/lu';
 
 export default function StoresPage() {
@@ -20,8 +21,6 @@ export default function StoresPage() {
     contact_phone: '',
     serial_prefix: '',
     serial_suffix: '',
-    whatsapp_enabled: false,
-    whatsapp_number: '',
   });
 
   useEffect(() => {
@@ -45,8 +44,6 @@ export default function StoresPage() {
       contact_phone: store.contact_phone || '',
       serial_prefix: store.serial_prefix,
       serial_suffix: store.serial_suffix || '',
-      whatsapp_enabled: store.whatsapp_enabled || false,
-      whatsapp_number: store.whatsapp_number || '',
     });
     setIsModalOpen(true);
   };
@@ -59,8 +56,6 @@ export default function StoresPage() {
       contact_phone: '',
       serial_prefix: '',
       serial_suffix: '',
-      whatsapp_enabled: false,
-      whatsapp_number: '',
     });
     setIsModalOpen(true);
   };
@@ -119,7 +114,6 @@ export default function StoresPage() {
                       <TableHead>Address</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Serial Format</TableHead>
-                      <TableHead>WhatsApp</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -133,13 +127,6 @@ export default function StoresPage() {
                           <code className="bg-neutral-100 px-2 py-1 rounded text-sm font-mono">
                             {store.serial_prefix}####{store.serial_suffix || 'XXXX'}
                           </code>
-                        </TableCell>
-                        <TableCell>
-                          {store.whatsapp_enabled ? (
-                            <Badge variant="success">✓ Enabled</Badge>
-                          ) : (
-                            <Badge variant="default">Disabled</Badge>
-                          )}
                         </TableCell>
                         <TableCell>
                             <Button size="sm" variant="ghost" onClick={() => handleEdit(store)}>
@@ -172,11 +159,10 @@ export default function StoresPage() {
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             />
 
-            <Input
+            <PhoneInputField
               label="Contact Phone"
-              placeholder="+1 (555) 123-4567"
               value={formData.contact_phone}
-              onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+              onChange={(phone) => setFormData({ ...formData, contact_phone: phone })}
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -195,28 +181,6 @@ export default function StoresPage() {
                 onChange={(e) => setFormData({ ...formData, serial_suffix: e.target.value })}
               />
             </div>
-
-            <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-              <input
-                type="checkbox"
-                id="whatsapp_enabled"
-                checked={formData.whatsapp_enabled}
-                onChange={(e) => setFormData({ ...formData, whatsapp_enabled: e.target.checked })}
-                className="h-4 w-4 rounded border-neutral-300 text-primary-600"
-              />
-              <label htmlFor="whatsapp_enabled" className="text-sm font-medium text-neutral-700">
-                Enable WhatsApp Integration
-              </label>
-            </div>
-
-            {formData.whatsapp_enabled && (
-              <Input
-                label="WhatsApp Number"
-                placeholder="+1 (555) 987-6543"
-                value={formData.whatsapp_number}
-                onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
-              />
-            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>

@@ -3,17 +3,14 @@ import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
 import { Warranty } from '@/models/Warranty';
 import { Product } from '@/models/Product';
-import { validateApiKey } from '@/lib/api-key-auth';
 
 async function getHandler(req: NextRequest, { params }: { params: { serial: string } }) {
   try {
-    const storeId = await validateApiKey(req);
     await connectDB();
 
-    // Find product by serial number
+    // Find product by serial number (no store_id needed - find from product)
     const product = await Product.findOne({
       serial_number: params.serial,
-      store_id: storeId,
     });
 
     if (!product) {
@@ -23,7 +20,6 @@ async function getHandler(req: NextRequest, { params }: { params: { serial: stri
     // Find warranty for this product
     const warranty = await Warranty.findOne({
       product_id: product._id,
-      store_id: storeId,
     });
 
     if (!warranty) {
@@ -33,7 +29,6 @@ async function getHandler(req: NextRequest, { params }: { params: { serial: stri
     // Find claims for this warranty
     const claims = await Claim.find({
       warranty_id: warranty._id,
-      store_id: storeId,
     })
       .populate({
         path: 'warranty_id',
@@ -54,9 +49,6 @@ async function getHandler(req: NextRequest, { params }: { params: { serial: stri
 
     return NextResponse.json({ claims });
   } catch (error: any) {
-    if (error.message.includes('API key')) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

@@ -14,7 +14,6 @@ import {
   LuClipboardList, 
   LuFileClock 
 } from 'react-icons/lu';
-import { FaWhatsapp } from 'react-icons/fa';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LuLayoutDashboard, permission: null },
@@ -26,12 +25,11 @@ const navigation = [
   { name: 'Store Users', href: '/store-users', icon: LuUsers, permission: 'manage_users' },
   { name: 'Settings', href: '/settings', icon: LuStore, permission: 'manage_settings' },
   { name: 'Audit Logs', href: '/audit-logs', icon: LuFileClock, permission: 'view_audit_logs' },
-  { name: 'WhatsApp', href: '/whatsapp', icon: FaWhatsapp, permission: 'manage_whatsapp' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { activeStoreUser, currentUser, allStores } = useStore();
+  const { activeStoreUser, currentUser, allStores, currentStore } = useStore();
 
   // Check if user has permission
   const hasPermission = (permission: string | null) => {
@@ -61,7 +59,7 @@ export function Sidebar() {
     <div className="flex flex-col w-72 bg-white border-r border-neutral-200 min-h-screen shadow-sm">
       <div className="flex items-center gap-3 px-6 h-20 border-b border-neutral-200 bg-gradient-to-r from-primary-600 to-primary-700">
         <LuShieldCheck className="w-8 h-8 text-white" />
-        <h1 className="text-white text-lg font-bold tracking-wide">Warranty Sys</h1>
+        <h1 className="text-white text-lg font-bold tracking-wide">Product Management SyS</h1>
       </div>
       
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
@@ -69,10 +67,14 @@ export function Sidebar() {
           const isActive = pathname.startsWith(item.href.split('?')[0]); // Remove query params for comparison
           const Icon = item.icon; // Get the icon component
           
+          // Get store ID from URL or context
+          const storeId = currentStore?._id?.toString() || '';
+          const href = storeId ? `${item.href}${item.href.includes('?') ? '&' : '?'}storeId=${storeId}` : item.href;
+          
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={href}
               className={cn(
                 'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group',
                 isActive

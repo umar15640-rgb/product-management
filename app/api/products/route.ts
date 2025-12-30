@@ -62,7 +62,7 @@ async function postHandler(req: NextRequest) {
     // Ensure storeId is a string
     const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
     
-    const serialData = await generateSerialNumber(storeIdString);
+    const serialData = await generateSerialNumber(storeIdString, validated.product_model);
 
     const product = await Product.create({
       ...validated,

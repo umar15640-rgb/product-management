@@ -35,8 +35,6 @@ export default function SettingsPage() {
     contact_phone: '',
     serial_prefix: '',
     serial_suffix: '',
-    whatsapp_enabled: false,
-    whatsapp_number: '',
   });
 
   useEffect(() => {
@@ -47,8 +45,6 @@ export default function SettingsPage() {
         contact_phone: currentStore.contact_phone || '',
         serial_prefix: currentStore.serial_prefix || '',
         serial_suffix: currentStore.serial_suffix || '',
-        whatsapp_enabled: currentStore.whatsapp_enabled || false,
-        whatsapp_number: currentStore.whatsapp_number || '',
       });
     }
   }, [currentStore]);
@@ -440,25 +436,6 @@ export default function SettingsPage() {
                 onChange={(e) => setStoreFormData({ ...storeFormData, serial_suffix: e.target.value })}
               />
             </div>
-            <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-              <input
-                type="checkbox"
-                id="whatsapp_enabled"
-                checked={storeFormData.whatsapp_enabled}
-                onChange={(e) => setStoreFormData({ ...storeFormData, whatsapp_enabled: e.target.checked })}
-                className="h-4 w-4 rounded border-neutral-300 text-primary-600"
-              />
-              <label htmlFor="whatsapp_enabled" className="text-sm font-medium text-neutral-700">
-                Enable WhatsApp Integration
-              </label>
-            </div>
-            {storeFormData.whatsapp_enabled && (
-              <PhoneInputField
-                label="WhatsApp Number"
-                value={storeFormData.whatsapp_number}
-                onChange={(phone) => setStoreFormData({ ...storeFormData, whatsapp_number: phone })}
-              />
-            )}
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsStoreModalOpen(false)}>
                 Cancel

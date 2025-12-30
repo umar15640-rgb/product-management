@@ -4,6 +4,15 @@ import { Claim } from '@/models/Claim';
 import { Warranty } from '@/models/Warranty';
 import { Product } from '@/models/Product';
 import { validateApiKey } from '@/lib/api-key-auth';
+import { logAudit } from '@/lib/audit-logger';
+import { z } from 'zod';
+
+const claimRegistrationSchema = z.object({
+  product_serial_number: z.string().min(1, 'Product serial number is required'),
+  claim_type: z.enum(['repair', 'replacement', 'refund']),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  attachments: z.array(z.string()).optional(),
+});
 
 async function getHandler(req: NextRequest) {
   try {
@@ -84,4 +93,95 @@ async function getHandler(req: NextRequest) {
   }
 }
 
+async function postHandler(req: NextRequest) {
+  try {
+    await connectDB();
+
+    const body = await req.json();
+    const validated = claimRegistrationSchema.parse(body);
+
+    // Find product by serial number (this will give us the store_id)
+    const product = await Product.findOne({
+      serial_number: validated.product_serial_number,
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found with the provided serial number' },
+        { status: 404 }
+      );
+    }
+
+    const storeId = typeof product.store_id === 'object' && product.store_id?._id
+      ? product.store_id._id.toString()
+      : product.store_id.toString();
+
+    // Find warranty for this product
+    const warranty = await Warranty.findOne({
+      product_id: product._id,
+      store_id: storeId,
+    });
+
+    if (!warranty) {
+      return NextResponse.json(
+        { error: 'Warranty not found for this product. Please register warranty first.' },
+        { status: 404 }
+      );
+    }
+
+    // Check if warranty is still active
+    if (warranty.status !== 'active') {
+      return NextResponse.json(
+        { error: `Warranty is ${warranty.status}. Only active warranties can have claims.` },
+        { status: 400 }
+      );
+    }
+
+    // Create claim
+    const claim = await Claim.create({
+      warranty_id: warranty._id,
+      store_id: storeId,
+      claim_type: validated.claim_type,
+      description: validated.description,
+      status: 'pending',
+      attachments: validated.attachments || [],
+      timeline_events: [
+        {
+          timestamp: new Date(),
+          action: 'Claim created via external API',
+        },
+      ],
+    });
+
+    // Update warranty status to claimed
+    await Warranty.findByIdAndUpdate(warranty._id, { status: 'claimed' });
+
+    await logAudit({
+      userId: warranty.user_id.toString(),
+      storeId: storeId.toString(),
+      entity: 'claims',
+      entityId: claim._id,
+      action: 'create',
+      newValue: claim,
+    });
+
+    return NextResponse.json(
+      {
+        claim,
+        message: 'Claim registered successfully',
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+}
+
 export const GET = getHandler;
+export const POST = postHandler;

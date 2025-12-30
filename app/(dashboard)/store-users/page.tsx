@@ -47,7 +47,6 @@ export default function StoreUsersPage() {
     { id: 'manage_users', label: 'Manage Store Users' },
     { id: 'manage_settings', label: 'Manage Settings' },
     { id: 'view_audit_logs', label: 'View Audit Logs' },
-    { id: 'manage_whatsapp', label: 'Manage WhatsApp' },
   ];
 
   const togglePermission = (permissionId: string) => {

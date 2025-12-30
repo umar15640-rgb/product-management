@@ -81,7 +81,7 @@ export default function LoginPage() {
             <LuShieldCheck className="text-white w-10 h-10" />
           </div>
           <h1 className="text-3xl font-bold text-neutral-900 mb-2">Welcome Back</h1>
-          <p className="text-neutral-600">Sign in to your Warranty Management System</p>
+          <p className="text-neutral-600">Sign in to your Product Management System</p>
         </div>
 
         <Card className="shadow-xl border-neutral-200">
@@ -127,7 +127,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-neutral-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-neutral-500">New to Warranty System?</span>
+                  <span className="px-2 bg-white text-neutral-500">New to Product Management System?</span>
                 </div>
               </div>
 

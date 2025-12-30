@@ -22,8 +22,6 @@ export default function SignupPage() {
     store_phone: '',
     serial_prefix: '',
     serial_suffix: '',
-    whatsapp_enabled: true,
-    whatsapp_number: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,9 +59,6 @@ export default function SignupPage() {
         body: JSON.stringify({
           ...formData,
           store_phone: formData.store_phone || undefined,
-          whatsapp_number: formData.whatsapp_enabled && formData.whatsapp_number 
-            ? formData.whatsapp_number 
-            : (formData.whatsapp_enabled ? formData.store_phone : undefined),
         }),
       });
 
@@ -171,28 +166,6 @@ export default function SignupPage() {
                     maxLength={10}
                   />
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-                  <input
-                    type="checkbox"
-                    id="whatsapp_enabled"
-                    checked={formData.whatsapp_enabled}
-                    onChange={(e) => setFormData({ ...formData, whatsapp_enabled: e.target.checked })}
-                    className="h-4 w-4 rounded border-neutral-300 text-primary-600"
-                  />
-                  <label htmlFor="whatsapp_enabled" className="text-sm font-medium text-neutral-700">
-                    Enable WhatsApp Integration
-                  </label>
-                </div>
-                {formData.whatsapp_enabled && (
-                  <>
-                    <PhoneInputField
-                      label="WhatsApp Number"
-                      value={formData.whatsapp_number}
-                      onChange={(phone) => setFormData({ ...formData, whatsapp_number: phone })}
-                    />
-                    <p className="text-xs text-neutral-500">Leave empty to use store phone number</p>
-                  </>
-                )}
               </div>
 
               <Button type="submit" className="w-full h-11" loading={loading}>

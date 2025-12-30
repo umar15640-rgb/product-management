@@ -13,12 +13,10 @@ import { Badge } from '@/components/ui/Badge';
 export default function ProductsPage() {
   const { activeStoreUser, currentStore } = useStore(); // Destructure currentStore
   const [products, setProducts] = useState<any[]>([]);
-  const [stores, setStores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    store_id: '',
     product_model: '',
     category: '',
     brand: '',
@@ -29,7 +27,6 @@ export default function ProductsPage() {
   useEffect(() => {
     // Only fetch when currentStore is available
     if (activeStoreUser && currentStore) fetchProducts();
-    fetchStores();
   }, [activeStoreUser, currentStore]); // Add currentStore to dependencies
 
   const fetchProducts = async () => {
@@ -43,22 +40,14 @@ export default function ProductsPage() {
     setProducts(data.products || []);
   };
 
-  const fetchStores = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/stores', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setStores(data.stores || []);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     
-    if (!formData.store_id) {
-      setError('Please select a store');
+    if (!currentStore?._id) {
+      setError('No store selected. Please select a store first.');
       setLoading(false);
       return;
     }
@@ -108,7 +97,6 @@ export default function ProductsPage() {
       setIsModalOpen(false);
       fetchProducts();
       setFormData({
-        store_id: '',
         product_model: '',
         category: '',
         brand: '',
@@ -188,24 +176,6 @@ export default function ProductsPage() {
                 {error}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Store <span className="text-danger-600">*</span>
-              </label>
-              <select
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-neutral-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-                value={formData.store_id}
-                onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
-                required
-              >
-                <option value="">Select a store</option>
-                {stores.map((store) => (
-                  <option key={store._id} value={store._id}>
-                    {store.store_name}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <Input
               label="Brand"

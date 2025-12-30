@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 interface StoreContextType {
   currentStore: any;
@@ -21,6 +21,8 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [currentStore, setCurrentStoreState] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeStoreUser, setActiveStoreUser] = useState<any>(null);
@@ -193,8 +195,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         .catch(err => console.error('Error fetching store users:', err));
     }
-    // Redirect to dashboard when switching stores
-    router.push('/dashboard');
+    // Update URL with store ID and redirect to dashboard
+    const newUrl = `/dashboard?storeId=${storeId}`;
+    router.push(newUrl);
   };
 
   const handleSetActiveStoreUser = (user: any) => {
@@ -210,6 +213,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoggedInStoreUsers(updated);
     localStorage.setItem('loggedInStoreUsers', JSON.stringify(updated));
   };
+
+  // Sync store ID from URL params
+  useEffect(() => {
+    const storeIdFromUrl = searchParams?.get('storeId');
+    if (storeIdFromUrl && storeIdFromUrl !== currentStore?._id?.toString()) {
+      // Find store in allStores and set it
+      const store = allStores.find(s => s._id?.toString() === storeIdFromUrl);
+      if (store) {
+        setCurrentStoreState(store);
+        localStorage.setItem('currentStoreId', storeIdFromUrl);
+      }
+    } else if (!storeIdFromUrl && currentStore?._id && pathname?.startsWith('/dashboard')) {
+      // If no storeId in URL but we have a current store, add it to URL
+      const storeId = typeof currentStore._id === 'string' ? currentStore._id : currentStore._id.toString();
+      const newUrl = `${pathname}?storeId=${storeId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, currentStore, allStores, pathname, router]);
 
   useEffect(() => {
     fetchContextData();

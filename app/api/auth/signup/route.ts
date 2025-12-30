@@ -16,8 +16,6 @@ const simpleSignupSchema = z.object({
   store_phone: z.string().optional(),
   serial_prefix: z.string().default('PRD'),
   serial_suffix: z.string().optional().default(''),
-  whatsapp_enabled: z.boolean().default(true),
-  whatsapp_number: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -53,8 +51,6 @@ export async function POST(req: NextRequest) {
       contact_phone: validated.store_phone,
       serial_prefix: validated.serial_prefix,
       serial_suffix: validated.serial_suffix || '',
-      whatsapp_enabled: validated.whatsapp_enabled ?? true,
-      whatsapp_number: validated.whatsapp_number || validated.store_phone,
       owner_user_id: userAccount._id,
       serial_counter: 1,
     });
