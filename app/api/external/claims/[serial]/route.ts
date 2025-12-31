@@ -17,18 +17,19 @@ async function getHandler(req: NextRequest, { params }: { params: { serial: stri
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Find warranty for this product
-    const warranty = await Warranty.findOne({
+    // Find all warranties for this product
+    const warranties = await Warranty.find({
       product_id: product._id,
     });
 
-    if (!warranty) {
+    if (!warranties || warranties.length === 0) {
       return NextResponse.json({ error: 'Warranty not found for this product' }, { status: 404 });
     }
 
-    // Find claims for this warranty
+    // Find claims for all warranties of this product
+    const warrantyIds = warranties.map(w => w._id);
     const claims = await Claim.find({
-      warranty_id: warranty._id,
+      warranty_id: { $in: warrantyIds },
     })
       .populate({
         path: 'warranty_id',

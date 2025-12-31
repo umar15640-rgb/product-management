@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
 import { Warranty } from '@/models/Warranty';
+import { Customer } from '@/models/Customer';
 import { Product } from '@/models/Product';
 import { validateApiKey } from '@/lib/api-key-auth';
 import { logAudit } from '@/lib/audit-logger';
 import { z } from 'zod';
 
+// Normalize phone numbers (handles +91, 91, spaces, hyphens, etc.)
+const normalizePhone = (phone: string) =>
+  phone.replace(/\D/g, '').replace(/^91/, '');
+
 const claimRegistrationSchema = z.object({
   product_serial_number: z.string().min(1, 'Product serial number is required'),
+  customer_phone: z.string().min(1, 'Customer phone is required'),
   claim_type: z.enum(['repair', 'replacement', 'refund']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   attachments: z.array(z.string()).optional(),
@@ -26,28 +32,15 @@ async function getHandler(req: NextRequest) {
     const status = searchParams.get('status');
 
     const query: any = { store_id: storeId };
-    if (status) {
-      query.status = status;
-    }
-
-    let warrantiesFilter: any[] = [];
+    if (status) query.status = status;
 
     if (serialNumber) {
-      // Find product by serial number first
       const product = await Product.findOne({
         serial_number: serialNumber,
         store_id: storeId,
       });
 
-      if (product) {
-        const warranties = await Warranty.find({
-          product_id: product._id,
-          store_id: storeId,
-        });
-        warrantiesFilter = warranties.map((w) => w._id);
-        query.warranty_id = { $in: warrantiesFilter };
-      } else {
-        // Return empty result if product not found
+      if (!product) {
         return NextResponse.json({
           claims: [],
           total: 0,
@@ -55,22 +48,24 @@ async function getHandler(req: NextRequest) {
           pages: 0,
         });
       }
+
+      const warranties = await Warranty.find({
+        product_id: product._id,
+        store_id: storeId,
+      });
+
+      const warrantyIds = warranties.map(w => w._id);
+      query.warranty_id = { $in: warrantyIds };
     }
 
     const claims = await Claim.find(query)
       .populate({
         path: 'warranty_id',
-        populate: {
-          path: 'product_id',
-          select: 'product_model brand category serial_number',
-        },
+        populate: { path: 'product_id', select: 'product_model brand category serial_number' }
       })
       .populate({
         path: 'warranty_id',
-        populate: {
-          path: 'customer_id',
-          select: 'customer_name phone email',
-        },
+        populate: { path: 'customer_id', select: 'customer_name phone email' }
       })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -100,7 +95,10 @@ async function postHandler(req: NextRequest) {
     const body = await req.json();
     const validated = claimRegistrationSchema.parse(body);
 
-    // Find product by serial number (this will give us the store_id)
+    // Normalize phone numbers
+    const normalizedInputPhone = normalizePhone(validated.customer_phone);
+
+    // 1. Find product
     const product = await Product.findOne({
       serial_number: validated.product_serial_number,
     });
@@ -112,24 +110,37 @@ async function postHandler(req: NextRequest) {
       );
     }
 
-    const storeId = typeof product.store_id === 'object' && product.store_id?._id
-      ? product.store_id._id.toString()
-      : product.store_id.toString();
+    const storeId =
+      typeof product.store_id === 'object' && product.store_id?._id
+        ? product.store_id._id.toString()
+        : product.store_id.toString();
 
-    // Find warranty for this product
+    // 2. Find the warranty **including customer**
     const warranty = await Warranty.findOne({
       product_id: product._id,
       store_id: storeId,
-    });
+      status: 'active',
+    }).populate('customer_id');
 
     if (!warranty) {
       return NextResponse.json(
-        { error: 'Warranty not found for this product. Please register warranty first.' },
+        { error: 'No active warranty found for this product. Please register warranty first.' },
         { status: 404 }
       );
     }
 
-    // Check if warranty is still active
+    const customer = warranty.customer_id as any;
+    const normalizedDbPhone = normalizePhone(customer.phone);
+
+    // 3. Compare normalized phone numbers
+    if (normalizedDbPhone !== normalizedInputPhone) {
+      return NextResponse.json(
+        { error: 'Warranty does not exist for this customer and product combination' },
+        { status: 404 }
+      );
+    }
+
+    // 4. Validate warranty status
     if (warranty.status !== 'active') {
       return NextResponse.json(
         { error: `Warranty is ${warranty.status}. Only active warranties can have claims.` },
@@ -137,7 +148,7 @@ async function postHandler(req: NextRequest) {
       );
     }
 
-    // Create claim
+    // 5. Create claim
     const claim = await Claim.create({
       warranty_id: warranty._id,
       store_id: storeId,
@@ -153,7 +164,7 @@ async function postHandler(req: NextRequest) {
       ],
     });
 
-    // Update warranty status to claimed
+    // Auto-update warranty status to claimed
     await Warranty.findByIdAndUpdate(warranty._id, { status: 'claimed' });
 
     await logAudit({
@@ -166,10 +177,7 @@ async function postHandler(req: NextRequest) {
     });
 
     return NextResponse.json(
-      {
-        claim,
-        message: 'Claim registered successfully',
-      },
+      { claim, message: 'Claim registered successfully' },
       { status: 201 }
     );
   } catch (error: any) {
@@ -179,6 +187,13 @@ async function postHandler(req: NextRequest) {
         { status: 400 }
       );
     }
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: 'Claim already exists for this warranty' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

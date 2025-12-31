@@ -19,8 +19,11 @@ const WarrantySchema = new Schema<IWarranty>(
   }
 );
 
-WarrantySchema.index({ product_id: 1 }, { unique: true });
-WarrantySchema.index({ store_id: 1, user_id: 1 }); // Efficient isolation query
+WarrantySchema.index(
+  { product_id: 1, customer_id: 1, store_id: 1 },
+  { unique: true }
+);
+WarrantySchema.index({ store_id: 1, user_id: 1 });
 WarrantySchema.index({ customer_id: 1 });
 WarrantySchema.index({ status: 1 });
 

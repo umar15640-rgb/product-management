@@ -39,7 +39,9 @@ This document provides comprehensive instructions for testing the External API e
 
 **Description**: Register a warranty for a product. System automatically:
 - Finds the store from product serial number
-- Creates customer if doesn't exist
+- Creates customer if doesn't exist (matched by phone number)
+- Updates customer info if already exists
+- Allows multiple warranties per product (one per customer)
 - Calculates warranty start (current date) and end dates
 - Generates QR code
 - Generates warranty PDF
@@ -69,6 +71,12 @@ Content-Type: application/json
 - `customer_email` (string): Customer's email address
 - `customer_address` (string): Customer's address
 
+**Behavior**:
+- If customer with this phone number doesn't exist in the store, a new customer is created automatically
+- If customer exists, their information is updated with provided data
+- If warranty already exists for this customer-product combination, returns 400 error
+- If warranty doesn't exist for this customer-product combination, warranty is created
+
 **Success Response** (201 Created):
 ```json
 {
@@ -88,8 +96,8 @@ Content-Type: application/json
 ```
 
 **Error Responses**:
-- `400 Bad Request`: Validation error or warranty already exists
-- `404 Not Found`: Product not found
+- `400 Bad Request`: Validation error, warranty already exists for this customer-product combination, or warranty not active
+- `404 Not Found`: Product not found or warranty not found for this customer-product combination
 
 ---
 
@@ -99,8 +107,9 @@ Content-Type: application/json
 
 **Description**: Register a warranty claim. System automatically:
 - Finds the store from product serial number
-- Finds the warranty for the product
-- Creates claim and updates warranty status
+- Finds the warranty for the specific customer-product combination
+- Verifies warranty exists for that customer
+- Creates claim and updates warranty status to "claimed"
 
 **Headers**:
 ```
@@ -111,6 +120,7 @@ Content-Type: application/json
 ```json
 {
   "product_serial_number": "PRD-IPH-123456",
+  "customer_phone": "+919876543210",
   "claim_type": "repair",
   "description": "Screen is cracked and not responding to touch. Device was dropped.",
   "attachments": [
@@ -122,11 +132,18 @@ Content-Type: application/json
 
 **Required Fields**:
 - `product_serial_number` (string): Serial number of the product
+- `customer_phone` (string): Customer's phone number (must match the customer who has warranty for this product)
 - `claim_type` (string): One of "repair", "replacement", "refund"
 - `description` (string): Claim description (minimum 10 characters)
 
 **Optional Fields**:
 - `attachments` (array of strings): URLs to attachment files
+
+**Behavior**:
+- Finds warranty for the specific customer-product combination
+- If warranty doesn't exist for this customer and product, returns 404 error
+- If warranty exists and is active, claim is created and warranty status changes to "claimed"
+- If warranty is not active, returns 400 error
 
 **Success Response** (201 Created):
 ```json
@@ -151,8 +168,8 @@ Content-Type: application/json
 ```
 
 **Error Responses**:
-- `400 Bad Request`: Validation error, warranty not active, or warranty not found
-- `404 Not Found`: Product or warranty not found
+- `400 Bad Request`: Validation error, description too short, invalid claim type, or warranty not active
+- `404 Not Found`: Product not found or warranty not found for this customer-product combination
 
 ---
 
@@ -175,29 +192,30 @@ GET /api/external/warranties/PRD-IPH-123456
 **Success Response** (200 OK):
 ```json
 {
-  "warranty": {
-    "_id": "65a1b2c3d4e5f6g7h8i9j0k1",
-    "product_id": {
-      "_id": "65a1b2c3d4e5f6g7h8i9j0k2",
-      "product_model": "iPhone 15 Pro",
-      "brand": "Apple",
-      "category": "Electronics",
-      "serial_number": "PRD-IPH-123456"
-    },
-    "customer_id": {
-      "_id": "65a1b2c3d4e5f6g7h8i9j0k3",
-      "customer_name": "John Doe",
-      "phone": "+919876543210",
-      "email": "john@example.com"
-    },
-    "warranty_start": "2024-01-15T00:00:00.000Z",
-    "warranty_end": "2025-01-15T00:00:00.000Z",
-    "status": "active",
-    "qr_code_url": "/uploads/qr/qr-PRD-IPH-123456-1234567890.png",
-    "warranty_pdf_url": "/uploads/warranties/warranty-PRD-IPH-123456-1234567890.pdf"
-  }
+  "warranties": [
+    {
+      "_id": "65a1b2c3d4e5f6g7h8i9j0k1",
+      "product_id": {
+        "_id": "65a1b2c3d4e5f6g7h8i9j0k2",
+        "product_model": "iPhone 15 Pro",
+        "brand": "Apple",
+        "category": "Electronics",
+        "serial_number": "PRD-IPH-123456"
+      },
+      "customer_id": {
+        "_id": "65a1b2c3d4e5f6g7h8i9j0k3",
+        "customer_name": "John Doe",
+        "phone": "+919876543210",
+        "email": "john@example.com"
+      },
+      "warranty_start": "2024-01-15T00:00:00.000Z",
+      "warranty_end": "2025-01-15T00:00:00.000Z",
+      "status": "active",
+      "qr_code_url": "/uploads/qr/qr-PRD-IPH-123456-1234567890.png",
+      "warranty_pdf_url": "/uploads/warranties/warranty-PRD-IPH-123456-1234567890.pdf"
+    }
+  ]
 }
-```
 
 **Error Responses**:
 - `404 Not Found`: Product or warranty not found
@@ -278,6 +296,7 @@ GET /api/external/claims/PRD-IPH-123456
     {
       "_id": "65a1b2c3d4e5f6g7h8i9j0k5",
       "warranty_id": {
+        "_id": "65a1b2c3d4e5f6g7h8i9j0k1",
         "product_id": {
           "product_model": "iPhone 15 Pro",
           "brand": "Apple",
@@ -302,7 +321,6 @@ GET /api/external/claims/PRD-IPH-123456
     }
   ]
 }
-```
 
 ---
 
@@ -417,19 +435,22 @@ Create a Postman environment with these variables:
 - [ ] Test with all required fields
 - [ ] Test with optional fields
 - [ ] Test with invalid product serial number (should return 404)
-- [ ] Test with duplicate warranty (should return 400)
+- [ ] Test with duplicate warranty for same customer-product (should return 400)
+- [ ] Test with same product but different customer (should create new warranty)
 - [ ] Test with missing required fields (should return 400)
 - [ ] Verify customer is created if doesn't exist
+- [ ] Verify existing customer info is updated
 - [ ] Verify warranty PDF is generated
 
 ### Claim Registration Tests
-- [ ] Test with all required fields
+- [ ] Test with all required fields including customer_phone
 - [ ] Test with attachments
 - [ ] Test with invalid product serial number (should return 404)
-- [ ] Test with no warranty (should return 404)
+- [ ] Test with customer_phone that doesn't have warranty (should return 404)
 - [ ] Test with inactive warranty (should return 400)
 - [ ] Test with description too short (should return 400)
 - [ ] Test with invalid claim type (should return 400)
+- [ ] Verify warranty status changes to "claimed" after claim creation
 
 ### Query Tests
 - [ ] Test warranty lookup by serial number (no API key)
@@ -510,20 +531,26 @@ POST /api/external/claims
 }
 ```
 
-## Best Practices
+## Key Points
 
-1. **No API Key for POST**: Warranty and claim registration don't require API keys
-2. **Store Auto-Detection**: Store is automatically found from product serial number
-3. **Customer Auto-Creation**: Customers are automatically created if they don't exist
-4. **Date Auto-Calculation**: Warranty dates are automatically calculated
-5. **PDF Auto-Generation**: Warranty PDF is automatically generated after registration
-6. **Error Handling**: Always check error responses and handle appropriately
-7. **Validation**: Validate data before sending to API
+- **Multiple Warranties Per Product**: Different customers can have warranties for the same product
+- **Customer Identification**: Use phone number to identify customers
+- **Warranty Uniqueness**: A warranty is unique per product-customer combination
+- **Automatic Customer Creation**: Customers are created automatically if they don't exist
+- **Warranty Status**: Once a claim is created, warranty status changes from "active" to "claimed"
+- **No API Key for POST**: Warranty and claim registration don't require API keys
+- **API Key for GET**: List operations require API key for security
 
 ## Notes
 
-- **POST endpoints** (warranty/claim registration) don't require API keys - they find the store from the product serial number
-- **GET endpoints** (list/query operations) require API keys for security
-- All dates are automatically calculated - no need to pass warranty_start or warranty_end
-- Warranty PDF is automatically generated after warranty creation
-- Customers are automatically created if they don't exist (matched by phone number)
+- **Multiple Warranties Per Product**: Different customers can have warranties for the same product
+- **Customer Matching**: Customers are matched by phone number within a store
+- **Warranty Uniqueness**: A warranty is unique per product-customer combination, not just per product
+- **Claim Customer Identification**: Claims require customer_phone to identify which customer's warranty to use
+- **Automatic Customer Creation**: Customers are created automatically if they don't exist (matched by phone)
+- **Automatic Customer Update**: If customer exists, their information is updated with provided data
+- **Date Auto-Calculation**: Warranty dates are automatically calculated
+- **PDF Auto-Generation**: Warranty PDF is automatically generated after warranty creation
+- **Warranty Status**: Warranty status changes from "active" to "claimed" when a claim is created
+- **No API Key for POST**: Warranty and claim registration don't require API keys
+- **API Key for GET**: List operations require API key for security

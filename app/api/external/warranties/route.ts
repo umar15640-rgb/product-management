@@ -111,6 +111,7 @@ async function postHandler(req: NextRequest) {
         email: validated.customer_email || '',
         address: validated.customer_address || '',
         store_id: storeId,
+        user_id: product.user_id,
       });
     } else {
       // Update customer info if provided
@@ -120,9 +121,10 @@ async function postHandler(req: NextRequest) {
       await customer.save();
     }
 
-    // Check if warranty already exists for this product
+    // Check if warranty already exists for this product-customer combination
     const existingWarranty = await Warranty.findOne({
       product_id: product._id,
+      customer_id: customer._id,
       store_id: storeId,
     });
 
@@ -212,6 +214,12 @@ async function postHandler(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: 'Warranty already exists for this product and customer combination' },
         { status: 400 }
       );
     }

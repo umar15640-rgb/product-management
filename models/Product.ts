@@ -20,7 +20,6 @@ const ProductSchema = new Schema<IProduct>(
   }
 );
 
-ProductSchema.index({ serial_number: 1 }, { unique: true });
 ProductSchema.index({ store_id: 1, user_id: 1 });
 ProductSchema.index({ brand: 1, category: 1 });
 
