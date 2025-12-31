@@ -148,7 +148,7 @@ async function postHandler(req: NextRequest) {
       );
     }
 
-    // 5. Create claim
+    // 4. Create claim
     const claim = await Claim.create({
       warranty_id: warranty._id,
       store_id: storeId,
@@ -163,9 +163,6 @@ async function postHandler(req: NextRequest) {
         },
       ],
     });
-
-    // Auto-update warranty status to claimed
-    await Warranty.findByIdAndUpdate(warranty._id, { status: 'claimed' });
 
     await logAudit({
       userId: warranty.user_id.toString(),

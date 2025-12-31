@@ -12,9 +12,7 @@ async function getHandler(req: NextRequest) {
     
     // Enforce data isolation - only show claims from the authenticated user's store
     const storeId = await getAuthenticatedStoreId(req);
-    
-    // Ensure storeId is a string
-    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    const storeIdString = String(storeId);
     
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
@@ -60,8 +58,7 @@ async function postHandler(req: NextRequest) {
     
     const authContext = await getAuthenticatedUser(req);
     const storeId = await getAuthenticatedStoreId(req);
-    // Ensure storeId is a string
-    const storeIdString = typeof storeId === 'string' ? storeId : storeId.toString();
+    const storeIdString = String(storeId);
     const userId = authContext.accountType === 'store_user' 
       ? authContext.userId 
       : (authContext.storeUser?._id?.toString() || authContext.userId);
@@ -90,8 +87,6 @@ async function postHandler(req: NextRequest) {
         },
       ],
     });
-
-    await Warranty.findByIdAndUpdate(validated.warranty_id, { status: 'claimed' });
 
     await logAudit({
       userId: userId,

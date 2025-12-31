@@ -10,6 +10,7 @@ This document provides comprehensive instructions for testing the External API e
 - **Automatic Customer Creation**: Customers are created if they don't exist
 - **Automatic Date Calculation**: Warranty dates are automatically calculated
 - **Automatic PDF Generation**: Warranty PDF is automatically generated after registration
+- **Multiple Claims Per Warranty**: A single warranty can have multiple claims
 
 ## Prerequisites
 
@@ -109,7 +110,7 @@ Content-Type: application/json
 - Finds the store from product serial number
 - Finds the warranty for the specific customer-product combination
 - Verifies warranty exists for that customer
-- Creates claim and updates warranty status to "claimed"
+- Creates claim without modifying warranty status (warranty remains active or expired)
 
 **Headers**:
 ```
@@ -142,8 +143,9 @@ Content-Type: application/json
 **Behavior**:
 - Finds warranty for the specific customer-product combination
 - If warranty doesn't exist for this customer and product, returns 404 error
-- If warranty exists and is active, claim is created and warranty status changes to "claimed"
-- If warranty is not active, returns 400 error
+- If warranty exists and is active, claim is created (warranty status remains unchanged)
+- If warranty is expired, returns 400 error (only active warranties can have claims)
+- Multiple claims can be created for the same warranty
 
 **Success Response** (201 Created):
 ```json
@@ -533,16 +535,20 @@ POST /api/external/claims
 
 ## Key Points
 
+- **Warranty Status**: Only two statuses exist - "active" (within warranty period) or "expired" (past warranty end date)
+- **Multiple Claims Per Warranty**: A single warranty can have multiple claims filed against it
 - **Multiple Warranties Per Product**: Different customers can have warranties for the same product
 - **Customer Identification**: Use phone number to identify customers
 - **Warranty Uniqueness**: A warranty is unique per product-customer combination
 - **Automatic Customer Creation**: Customers are created automatically if they don't exist
-- **Warranty Status**: Once a claim is created, warranty status changes from "active" to "claimed"
+- **Warranty Status Immutable**: Warranty status is determined by dates, not by claim creation
 - **No API Key for POST**: Warranty and claim registration don't require API keys
 - **API Key for GET**: List operations require API key for security
 
 ## Notes
 
+- **Warranty Status**: Warranty status is only "active" or "expired" based on warranty dates, not affected by claims
+- **Multiple Claims Per Warranty**: Different claims can be filed for the same warranty
 - **Multiple Warranties Per Product**: Different customers can have warranties for the same product
 - **Customer Matching**: Customers are matched by phone number within a store
 - **Warranty Uniqueness**: A warranty is unique per product-customer combination, not just per product
@@ -551,6 +557,5 @@ POST /api/external/claims
 - **Automatic Customer Update**: If customer exists, their information is updated with provided data
 - **Date Auto-Calculation**: Warranty dates are automatically calculated
 - **PDF Auto-Generation**: Warranty PDF is automatically generated after warranty creation
-- **Warranty Status**: Warranty status changes from "active" to "claimed" when a claim is created
 - **No API Key for POST**: Warranty and claim registration don't require API keys
 - **API Key for GET**: List operations require API key for security

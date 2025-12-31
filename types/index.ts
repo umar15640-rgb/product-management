@@ -80,7 +80,7 @@ export interface IWarranty {
   store_id: Types.ObjectId;
   warranty_start: Date;
   warranty_end: Date;
-  status: 'active' | 'expired' | 'claimed' | 'void';
+  status: 'active' | 'expired';
   qr_code_url?: string;
   warranty_pdf_url?: string;
   created_at: Date;

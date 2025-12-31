@@ -54,7 +54,8 @@ The Product Management System is a comprehensive warranty and claim management p
 - **Warranty Documents**:
   - QR code generation for warranty verification
   - PDF warranty certificate generation
-- **Warranty Status**: Track warranty status (active, expired, claimed, void)
+- **Warranty Status**: Two statuses only - "active" (within warranty period) or "expired" (past warranty end date)
+- **Multiple Claims**: A single warranty can have multiple claims filed against it
 - **External API Integration**: Support for warranty registration via webhooks
 
 ### 6. Claim Management

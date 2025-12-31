@@ -9,7 +9,7 @@ const WarrantySchema = new Schema<IWarranty>(
     user_id: { type: Schema.Types.ObjectId, ref: 'user_accounts', required: true }, // Added
     warranty_start: { type: Date, required: true },
     warranty_end: { type: Date, required: true },
-    status: { type: String, enum: ['active', 'expired', 'claimed', 'void'], default: 'active' },
+    status: { type: String, enum: ['active', 'expired'], default: 'active' },
     qr_code_url: { type: String },
     warranty_pdf_url: { type: String },
   },
