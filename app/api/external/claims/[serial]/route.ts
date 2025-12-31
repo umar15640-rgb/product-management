@@ -10,15 +10,16 @@ const normalizePhone = (phone: string) =>
   phone.replace(/\D/g, '').replace(/^91/, '');
 
 const claimLookupSchema = z.object({
-  customer_phone: z.string().nullable(),
-  customer_email: z.string().email().nullable(),
+  customer_phone: z.string().nullable().optional(),
+  customer_email: z.string().email().nullable().optional(),
 }).refine(
   (data) => data.customer_phone || data.customer_email,
   'Either customer_phone or customer_email is required'
 );
 
-async function getHandler(req: NextRequest, { params }: { params: { serial: string } }) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ serial: string }> }) {
   try {
+    const resolvedParams = await params;
     await validateApiKey(req);
     await connectDB();
 
@@ -32,7 +33,7 @@ async function getHandler(req: NextRequest, { params }: { params: { serial: stri
     });
 
     const product = await Product.findOne({
-      serial_number: params.serial,
+      serial_number: resolvedParams.serial,
     });
 
     if (!product) {

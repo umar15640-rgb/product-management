@@ -9,8 +9,8 @@ const normalizePhone = (phone: string) =>
   phone.replace(/\D/g, '').replace(/^91/, '');
 
 const warrantyLookupSchema = z.object({
-  customer_phone: z.string().nullable(),
-  customer_email: z.string().email().nullable(),
+  customer_phone: z.string().nullable().optional(),
+  customer_email: z.string().email().nullable().optional(),
 }).refine(
   (data) => data.customer_phone || data.customer_email,
   'Either customer_phone or customer_email is required'

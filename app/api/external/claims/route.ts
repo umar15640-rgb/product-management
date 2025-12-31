@@ -12,8 +12,8 @@ const normalizePhone = (phone: string) =>
 
 const claimRegistrationSchema = z.object({
   product_serial_number: z.string().min(1, 'Product serial number is required'),
-  customer_phone: z.string().nullable(),
-  customer_email: z.string().email().nullable(),
+  customer_phone: z.string().nullable().optional(),
+  customer_email: z.string().email().nullable().optional(),
   claim_type: z.enum(['repair', 'replacement', 'refund']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   attachments: z.array(z.string()).optional(),
