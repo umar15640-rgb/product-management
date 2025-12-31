@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/models/Product';
 
-async function getHandler(req: NextRequest, { params }: { params: { serial: string } }) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ serial: string }> }) {
   try {
+    const resolvedParams = await params;
     await connectDB();
 
     const product = await Product.findOne({
-      serial_number: params.serial,
+      serial_number: resolvedParams.serial,
     })
       .populate('store_id', 'store_name')
       .select('-__v');
