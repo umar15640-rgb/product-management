@@ -4,7 +4,6 @@ import { Warranty } from '@/models/Warranty';
 import { Product } from '@/models/Product';
 import { Customer } from '@/models/Customer';
 import { Store } from '@/models/Store';
-import { validateApiKey } from '@/lib/api-key-auth';
 import { generateQRCode } from '@/lib/qr-generator';
 import { generateWarrantyPDF } from '@/lib/pdf-generator';
 import { calculateWarrantyEnd } from '@/lib/utils';
@@ -14,66 +13,13 @@ import { z } from 'zod';
 const warrantyRegistrationSchema = z.object({
   product_serial_number: z.string().min(1, 'Product serial number is required'),
   customer_name: z.string().min(1, 'Customer name is required'),
-  customer_phone: z.string().min(1, 'Customer phone is required'),
-  customer_email: z.string().email().optional().or(z.literal('')),
+  customer_phone: z.string().optional(),
+  customer_email: z.string().email().optional(),
   customer_address: z.string().optional().or(z.literal('')),
-});
-
-async function getHandler(req: NextRequest) {
-  try {
-    const storeId = await validateApiKey(req);
-    await connectDB();
-
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const serialNumber = searchParams.get('serial_number');
-
-    const query: any = { store_id: storeId };
-
-    if (serialNumber) {
-      // Find product by serial number first
-      const product = await Product.findOne({
-        serial_number: serialNumber,
-        store_id: storeId,
-      });
-
-      if (product) {
-        query.product_id = product._id;
-      } else {
-        // Return empty result if product not found
-        return NextResponse.json({
-          warranties: [],
-          total: 0,
-          page,
-          pages: 0,
-        });
-      }
-    }
-
-    const warranties = await Warranty.find(query)
-      .populate('product_id', 'product_model brand category serial_number')
-      .populate('customer_id', 'customer_name phone email')
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ created_at: -1 })
-      .select('-__v');
-
-    const total = await Warranty.countDocuments(query);
-
-    return NextResponse.json({
-      warranties,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
-  } catch (error: any) {
-    if (error.message.includes('API key')) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-}
+}).refine(
+  (data) => data.customer_phone || data.customer_email,
+  'Either customer_phone or customer_email is required'
+);
 
 async function postHandler(req: NextRequest) {
   try {
@@ -98,16 +44,20 @@ async function postHandler(req: NextRequest) {
       ? product.store_id._id.toString()
       : product.store_id.toString();
 
-    // Find or create customer
+    // Find or create customer by phone or email
+    const filterConditions: any[] = [];
+    if (validated.customer_phone) filterConditions.push({ phone: validated.customer_phone });
+    if (validated.customer_email) filterConditions.push({ email: validated.customer_email });
+
     let customer = await Customer.findOne({
-      phone: validated.customer_phone,
+      $or: filterConditions,
       store_id: storeId,
     });
 
     if (!customer) {
       customer = await Customer.create({
         customer_name: validated.customer_name,
-        phone: validated.customer_phone,
+        phone: validated.customer_phone || '',
         email: validated.customer_email || '',
         address: validated.customer_address || '',
         store_id: storeId,
@@ -116,9 +66,10 @@ async function postHandler(req: NextRequest) {
     } else {
       // Update customer info if provided
       if (validated.customer_name) customer.customer_name = validated.customer_name;
+      if (validated.customer_phone) customer.phone = validated.customer_phone;
       if (validated.customer_email) customer.email = validated.customer_email;
       if (validated.customer_address) customer.address = validated.customer_address;
-      await customer.save();
+      await (customer as any).save();
     }
 
     // Check if warranty already exists for this product-customer combination
@@ -188,8 +139,11 @@ async function postHandler(req: NextRequest) {
       });
 
       // Update warranty with PDF URL
-      warranty.warranty_pdf_url = warranty_pdf_url;
-      await warranty.save();
+      const updatedWarranty = await Warranty.findByIdAndUpdate(
+        warranty._id,
+        { warranty_pdf_url },
+        { new: true }
+      );
     } catch (pdfError: any) {
       console.error('PDF generation failed:', pdfError.message);
     }
@@ -227,5 +181,4 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = getHandler;
 export const POST = postHandler;

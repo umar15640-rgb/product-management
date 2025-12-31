@@ -2,103 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Claim } from '@/models/Claim';
 import { Warranty } from '@/models/Warranty';
-import { Customer } from '@/models/Customer';
 import { Product } from '@/models/Product';
 import { validateApiKey } from '@/lib/api-key-auth';
 import { logAudit } from '@/lib/audit-logger';
 import { z } from 'zod';
 
-// Normalize phone numbers (handles +91, 91, spaces, hyphens, etc.)
 const normalizePhone = (phone: string) =>
   phone.replace(/\D/g, '').replace(/^91/, '');
 
 const claimRegistrationSchema = z.object({
   product_serial_number: z.string().min(1, 'Product serial number is required'),
-  customer_phone: z.string().min(1, 'Customer phone is required'),
+  customer_phone: z.string().optional(),
+  customer_email: z.string().email().optional(),
   claim_type: z.enum(['repair', 'replacement', 'refund']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   attachments: z.array(z.string()).optional(),
-});
-
-async function getHandler(req: NextRequest) {
-  try {
-    const storeId = await validateApiKey(req);
-    await connectDB();
-
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const serialNumber = searchParams.get('serial_number');
-    const status = searchParams.get('status');
-
-    const query: any = { store_id: storeId };
-    if (status) query.status = status;
-
-    if (serialNumber) {
-      const product = await Product.findOne({
-        serial_number: serialNumber,
-        store_id: storeId,
-      });
-
-      if (!product) {
-        return NextResponse.json({
-          claims: [],
-          total: 0,
-          page,
-          pages: 0,
-        });
-      }
-
-      const warranties = await Warranty.find({
-        product_id: product._id,
-        store_id: storeId,
-      });
-
-      const warrantyIds = warranties.map(w => w._id);
-      query.warranty_id = { $in: warrantyIds };
-    }
-
-    const claims = await Claim.find(query)
-      .populate({
-        path: 'warranty_id',
-        populate: { path: 'product_id', select: 'product_model brand category serial_number' }
-      })
-      .populate({
-        path: 'warranty_id',
-        populate: { path: 'customer_id', select: 'customer_name phone email' }
-      })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ created_at: -1 })
-      .select('-__v');
-
-    const total = await Claim.countDocuments(query);
-
-    return NextResponse.json({
-      claims,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
-  } catch (error: any) {
-    if (error.message.includes('API key')) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-}
+}).refine(
+  (data) => data.customer_phone || data.customer_email,
+  'Either customer_phone or customer_email is required'
+);
 
 async function postHandler(req: NextRequest) {
   try {
+    await validateApiKey(req);
     await connectDB();
 
     const body = await req.json();
     const validated = claimRegistrationSchema.parse(body);
 
-    // Normalize phone numbers
-    const normalizedInputPhone = normalizePhone(validated.customer_phone);
-
-    // 1. Find product
     const product = await Product.findOne({
       serial_number: validated.product_serial_number,
     });
@@ -115,32 +46,47 @@ async function postHandler(req: NextRequest) {
         ? product.store_id._id.toString()
         : product.store_id.toString();
 
-    // 2. Find the warranty **including customer**
-    const warranty = await Warranty.findOne({
+    const warranties = await Warranty.find({
       product_id: product._id,
       store_id: storeId,
       status: 'active',
     }).populate('customer_id');
 
-    if (!warranty) {
+    if (warranties.length === 0) {
       return NextResponse.json(
         { error: 'No active warranty found for this product. Please register warranty first.' },
         { status: 404 }
       );
     }
 
-    const customer = warranty.customer_id as any;
-    const normalizedDbPhone = normalizePhone(customer.phone);
+    let warranty = null;
+    for (const w of warranties) {
+      const customer = w.customer_id as any;
+      let customerMatches = false;
 
-    // 3. Compare normalized phone numbers
-    if (normalizedDbPhone !== normalizedInputPhone) {
+      if (validated.customer_phone) {
+        const normalizedInputPhone = normalizePhone(validated.customer_phone);
+        const normalizedDbPhone = normalizePhone(customer.phone);
+        customerMatches = normalizedDbPhone === normalizedInputPhone;
+      }
+
+      if (validated.customer_email && !customerMatches) {
+        customerMatches = customer.email === validated.customer_email;
+      }
+
+      if (customerMatches) {
+        warranty = w;
+        break;
+      }
+    }
+
+    if (!warranty) {
       return NextResponse.json(
         { error: 'Warranty does not exist for this customer and product combination' },
         { status: 404 }
       );
     }
 
-    // 4. Validate warranty status
     if (warranty.status !== 'active') {
       return NextResponse.json(
         { error: `Warranty is ${warranty.status}. Only active warranties can have claims.` },
@@ -148,7 +94,6 @@ async function postHandler(req: NextRequest) {
       );
     }
 
-    // 4. Create claim
     const claim = await Claim.create({
       warranty_id: warranty._id,
       store_id: storeId,
@@ -178,6 +123,9 @@ async function postHandler(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error.message.includes('API key')) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -195,5 +143,4 @@ async function postHandler(req: NextRequest) {
   }
 }
 
-export const GET = getHandler;
 export const POST = postHandler;

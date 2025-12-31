@@ -1,5 +1,6 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import { IClaim, ITimelineEvent } from '@/types';
+import '@/models/Warranty';
 
 const TimelineEventSchema = new Schema<ITimelineEvent>(
   {

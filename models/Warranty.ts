@@ -1,5 +1,6 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import { IWarranty } from '@/types';
+import '@/models/Customer';
 
 const WarrantySchema = new Schema<IWarranty>(
   {
