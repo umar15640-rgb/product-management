@@ -118,9 +118,14 @@ export default function ProductsPage() {
             <h1 className="text-4xl font-bold text-neutral-900 mb-2">Products</h1>
             <p className="text-neutral-600">Manage your product inventory and warranty information</p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="h-11">
-            <span className="mr-2">+</span> Add Product
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={fetchProducts} variant="outline" className="h-11">
+              ↻
+            </Button>
+            <Button onClick={() => setIsModalOpen(true)} className="h-11">
+              <span className="mr-2">+</span> Add Product
+            </Button>
+          </div>
         </div>
 
         <Card>

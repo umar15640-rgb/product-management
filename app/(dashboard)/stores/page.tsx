@@ -89,9 +89,14 @@ export default function StoresPage() {
             <h1 className="text-4xl font-bold text-neutral-900 mb-2">Stores</h1>
             <p className="text-neutral-600">Manage your store locations and configurations</p>
           </div>
-          <Button onClick={handleAdd} className="h-11">
-            <span className="mr-2">+</span> Add Store
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={fetchStores} variant="outline" className="h-11">
+              ↻
+            </Button>
+            <Button onClick={handleAdd} className="h-11">
+              <span className="mr-2">+</span> Add Store
+            </Button>
+          </div>
         </div>
 
         <Card>

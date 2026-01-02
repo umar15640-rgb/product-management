@@ -8,6 +8,7 @@ import { generateQRCode } from '@/lib/qr-generator';
 import { generateWarrantyPDF } from '@/lib/pdf-generator';
 import { calculateWarrantyEnd } from '@/lib/utils';
 import { logAudit } from '@/lib/audit-logger';
+import { validateApiKey } from '@/lib/api-key-auth';
 import { z } from 'zod';
 
 const warrantyRegistrationSchema = z.object({
@@ -23,6 +24,7 @@ const warrantyRegistrationSchema = z.object({
 
 async function postHandler(req: NextRequest) {
   try {
+    await validateApiKey(req);
     await connectDB();
 
     const body = await req.json();
@@ -165,6 +167,9 @@ async function postHandler(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error.message.includes('API key')) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },

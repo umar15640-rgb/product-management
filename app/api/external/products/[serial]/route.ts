@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/models/Product';
+import { validateApiKey } from '@/lib/api-key-auth';
 
 async function getHandler(req: NextRequest, { params }: { params: Promise<{ serial: string }> }) {
   try {
     const resolvedParams = await params;
+    await validateApiKey(req);
     await connectDB();
 
     const product = await Product.findOne({
@@ -19,6 +21,9 @@ async function getHandler(req: NextRequest, { params }: { params: Promise<{ seri
 
     return NextResponse.json({ product });
   } catch (error: any) {
+    if (error.message.includes('API key')) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

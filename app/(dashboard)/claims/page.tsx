@@ -135,9 +135,14 @@ export default function ClaimsPage() {
             <h1 className="text-4xl font-bold text-neutral-900 mb-2">Claims</h1>
             <p className="text-neutral-600">Manage warranty claims and service requests</p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="h-11">
-            <span className="mr-2">+</span> Create Claim
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={fetchClaims} variant="outline" className="h-11">
+              ↻
+            </Button>
+            <Button onClick={() => setIsModalOpen(true)} className="h-11">
+              <span className="mr-2">+</span> Create Claim
+            </Button>
+          </div>
         </div>
 
         <Card>
